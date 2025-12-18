@@ -10,6 +10,8 @@
 //   - Render: 'https://your-app-name.onrender.com'
 //   - Custom domain: 'https://api.yourdomain.com'
 
-window.API_BASE_URL = 'http://localhost:3000';  // ← Change this to your backend URL
+window.API_BASE_URL = 'hardware-shop-management-production.up.railway.app'; // ← Change this to your backend URL
+
+console.log('Using API Base:', window.API_BASE_URL);
 
 // For development, this will be ignored (localhost detection in script.js)
