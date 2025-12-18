@@ -1,5 +1,5 @@
 /**
- * Hardware Shop Management System - Express Backend
+ * Delhi 47 Traders Admin Panel - Express Backend
  * REST API for product, vendor, sales, and reporting management
  */
 
@@ -536,13 +536,21 @@ app.get('/reports/daily-sales', async (req, res) => {
             LIMIT 30
         `);
 
-        res.json(daily.map(d => ({
-            date: d.sale_day,
-            total_sales: d.total_sales,
-            total_quantity: d.total_quantity,
-            total_revenue: parseFloat(d.total_revenue) || 0,
-            total_profit: parseFloat(d.total_profit) || 0
-        })));
+        res.json(daily.map(d => {
+            const dateObj = new Date(d.sale_day);
+            const formattedDate = dateObj.toLocaleDateString('en-US', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+            });
+            return {
+                date: formattedDate,
+                total_sales: d.total_sales,
+                total_quantity: d.total_quantity,
+                total_revenue: parseFloat(d.total_revenue) || 0,
+                total_profit: parseFloat(d.total_profit) || 0
+            };
+        }));
     } catch (error) {
         console.error('Error fetching daily sales report:', error);
         res.status(500).json({ error: 'Failed to fetch daily sales report' });

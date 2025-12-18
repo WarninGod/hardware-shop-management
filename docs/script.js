@@ -1,5 +1,5 @@
 /**
- * Hardware Shop Management System - Frontend JavaScript
+ * Delhi 47 Traders Admin Panel - Frontend JavaScript
  * Complete client-side logic for all features
  */
 
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initializeApp() {
-    console.log('🚀 Initializing Hardware Shop Management System...');
+    console.log('🚀 Initializing Delhi 47 Traders Admin Panel...');
     
     // Setup event listeners
     setupNavigation();
