@@ -1,18 +1,20 @@
 const mysql = require('mysql2/promise');
 const path = require('path');
 
-// Database configuration
+// Database configuration - use Railway's auto-generated variables
 const dbConfig = {
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'root',
-    database: process.env.DB_NAME || 'hardware_shop',
-    port: process.env.DB_PORT || 3306,  // ADD THIS LINE
+    host: process.env.MYSQLHOST || 'localhost',
+    port: process.env.MYSQLPORT || 3306,
+    user: process.env.MYSQLUSER || 'root',
+    password: process.env.MYSQLPASSWORD || 'root',
+    database: process.env.MYSQLDATABASE || 'hardware_shop',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
     multipleStatements: false
 };
+
+console.log(`Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
 
 // Create connection pool
 const pool = mysql.createPool(dbConfig);
