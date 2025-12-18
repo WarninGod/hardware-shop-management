@@ -1,32 +1,20 @@
 const mysql = require('mysql2/promise');
 const path = require('path');
-const { URL } = require('url');
 
-// Parse Railway's DATABASE_URL
-let dbConfig;
-if (process.env.DATABASE_URL) {
-    try {
-        const url = new URL(process.env.DATABASE_URL);
-        dbConfig = {
-            host: url.hostname,
-            port: url.port || 3306,
-            user: url.username,
-            password: url.password || '',
-            database: url.pathname.substring(1),
-            waitForConnections: true,
-            connectionLimit: 10,
-            queueLimit: 0,
-            multipleStatements: false
-        };
-        console.log(`📡 Using DATABASE_URL: ${url.hostname}:${url.port || 3306}`);
-    } catch (e) {
-        console.error('Invalid DATABASE_URL:', e.message);
-        process.exit(1);
-    }
-} else {
-    console.error('❌ DATABASE_URL not set!');
-    process.exit(1);
-}
+// Use Railway's individual MySQL variables
+const dbConfig = {
+    host: process.env.MYSQLHOST || 'mysql.railway.internal',
+    port: parseInt(process.env.MYSQLPORT || 3306),
+    user: process.env.MYSQLUSER || 'root',
+    password: process.env.MYSQLPASSWORD || '',
+    database: process.env.MYSQLDATABASE || 'railway',
+    waitForConnections: true,
+    connectionLimit: 10,
+    queueLimit: 0,
+    multipleStatements: false
+};
+
+console.log(`📡 Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database} as ${dbConfig.user}`);
 
 const pool = mysql.createPool(dbConfig);
 
@@ -38,20 +26,16 @@ async function initializeDatabase() {
     try {
         console.log('Attempting to connect to database...');
         
-        // Try connecting directly to the database
         connection = await pool.getConnection();
         console.log('✓ Connected to database');
         
-        // Test connection
         await connection.execute('SELECT 1');
         console.log('✓ Database connection verified');
 
-        // Read and execute schema
         const fs = require('fs');
         const schemaPath = path.join(__dirname, 'schema.sql');
         const schema = fs.readFileSync(schemaPath, 'utf8');
 
-        // Split statements and execute them idempotently
         const statements = schema.split(';').filter(stmt => stmt.trim());
         
         let created = 0;
@@ -68,7 +52,6 @@ async function initializeDatabase() {
                 const msg = (err && err.message) ? err.message : '';
                 const code = err && err.code;
 
-                // Skip duplicate key/index/table errors (idempotent)
                 if (
                     code === 'ER_DUP_KEYNAME' ||
                     code === 'ER_TABLE_EXISTS_ERROR' ||
@@ -79,34 +62,26 @@ async function initializeDatabase() {
                     continue;
                 }
                 
-                // Log actual error for debugging
-                console.error(`Error executing statement: ${statement.substring(0, 50)}...`);
-                console.error(`Error code: ${code}, Message: ${msg}`);
+                console.error(`Error executing: ${statement.substring(0, 50)}...`);
+                console.error(`Code: ${code}, Message: ${msg}`);
                 throw err;
             }
         }
 
-        console.log(`✓ Database initialized successfully (${created} tables created, ${skipped} skipped)`);
+        console.log(`✓ Database initialized (${created} tables created, ${skipped} skipped)`);
         return true;
     } catch (error) {
         console.error('✗ Database initialization error:', error.message);
-        console.error('Stack:', error.stack);
         throw error;
     } finally {
         if (connection) connection.release();
     }
 }
 
-/**
- * Get database pool for queries
- */
 function getPool() {
     return pool;
 }
 
-/**
- * Execute query with connection from pool
- */
 async function query(sql, values = []) {
     try {
         const connection = await pool.getConnection();
@@ -122,9 +97,6 @@ async function query(sql, values = []) {
     }
 }
 
-/**
- * Execute query and return single row
- */
 async function queryOne(sql, values = []) {
     const results = await query(sql, values);
     return results[0] || null;
