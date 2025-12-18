@@ -1,5 +1,5 @@
 /**
- * Hardware Shop Management System - Express Backend
+ * Delhi 47 Traders Admin Panel - Express Backend
  * REST API for product, vendor, sales, and reporting management
  */
 

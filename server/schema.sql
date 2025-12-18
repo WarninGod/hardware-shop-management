@@ -1,4 +1,4 @@
--- Hardware Shop Management Database Schema
+-- Delhi 47 Traders Admin Panel - Database Schema
 
 -- Create vendors table
 CREATE TABLE IF NOT EXISTS vendors (
