@@ -1,6 +1,15 @@
 const mysql = require('mysql2/promise');
 const path = require('path');
 
+// Debug: Log all MySQL-related env vars
+console.log('=== Environment Variables ===');
+console.log('MYSQLHOST:', process.env.MYSQLHOST);
+console.log('MYSQLPORT:', process.env.MYSQLPORT);
+console.log('MYSQLUSER:', process.env.MYSQLUSER);
+console.log('MYSQLPASSWORD:', process.env.MYSQLPASSWORD ? '***SET***' : 'NOT SET');
+console.log('MYSQLDATABASE:', process.env.MYSQLDATABASE);
+console.log('==============================');
+
 // Use Railway's individual MySQL variables
 const dbConfig = {
     host: process.env.MYSQLHOST || 'mysql.railway.internal',
@@ -15,6 +24,7 @@ const dbConfig = {
 };
 
 console.log(`📡 Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database} as ${dbConfig.user}`);
+console.log(`   Password: ${dbConfig.password ? '***SET***' : 'EMPTY'}`);
 
 const pool = mysql.createPool(dbConfig);
 
