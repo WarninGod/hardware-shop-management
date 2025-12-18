@@ -70,6 +70,34 @@ app.get('/vendors', async (req, res) => {
     }
 });
 
+/**
+ * DELETE /vendors/:id - Delete a vendor
+ */
+app.delete('/vendors/:id', async (req, res) => {
+    try {
+        const vendorId = parseInt(req.params.id);
+
+        // Check vendor exists
+        const vendor = await db.queryOne('SELECT id FROM vendors WHERE id = ?', [vendorId]);
+        if (!vendor) {
+            return res.status(404).json({ error: 'Vendor not found' });
+        }
+
+        // Check if vendor has products
+        const products = await db.queryOne('SELECT id FROM products WHERE vendor_id = ? LIMIT 1', [vendorId]);
+        if (products) {
+            return res.status(400).json({ error: 'Cannot delete vendor with existing products' });
+        }
+
+        await db.query('DELETE FROM vendors WHERE id = ?', [vendorId]);
+
+        res.json({ message: 'Vendor deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting vendor:', error);
+        res.status(500).json({ error: 'Failed to delete vendor' });
+    }
+});
+
 // ============================================================================
 // PRODUCT ENDPOINTS
 // ============================================================================
