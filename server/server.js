@@ -1,5 +1,5 @@
 /**
- * Delhi 47 Traders Admin Panel - Express Backend
+ * Hardware Shop Management System - Express Backend
  * REST API for product, vendor, sales, and reporting management
  */
 
@@ -385,6 +385,38 @@ app.get('/sales', async (req, res) => {
     }
 });
 
+/**
+ * DELETE /sales/:id - Delete a sale and restore product stock
+ */
+app.delete('/sales/:id', async (req, res) => {
+    try {
+        const saleId = parseInt(req.params.id);
+
+        // Fetch sale details
+        const sale = await db.queryOne(
+            'SELECT id, product_id, quantity FROM sales WHERE id = ?',
+            [saleId]
+        );
+        if (!sale) {
+            return res.status(404).json({ error: 'Sale not found' });
+        }
+
+        // Delete sale
+        await db.query('DELETE FROM sales WHERE id = ?', [saleId]);
+
+        // Restore product stock
+        await db.query(
+            'UPDATE products SET stock_quantity = stock_quantity + ? WHERE id = ?',
+            [sale.quantity, sale.product_id]
+        );
+
+        res.json({ message: 'Sale deleted and stock restored' });
+    } catch (error) {
+        console.error('Error deleting sale:', error);
+        res.status(500).json({ error: 'Failed to delete sale' });
+    }
+});
+
 // ============================================================================
 // REPORTING ENDPOINTS
 // ============================================================================
@@ -514,46 +546,6 @@ app.get('/reports/daily-sales', async (req, res) => {
     } catch (error) {
         console.error('Error fetching daily sales report:', error);
         res.status(500).json({ error: 'Failed to fetch daily sales report' });
-    }
-});
-
-// ============================================================================
-// ADMIN RESET ENDPOINTS (Protected)
-// ============================================================================
-
-function requireAdmin(req, res, next) {
-    const token = req.headers['x-admin-token'] || req.query.token || '';
-    const configured = process.env.ADMIN_RESET_TOKEN || '';
-    if (!configured) {
-        return res.status(503).json({ error: 'Admin reset not configured' });
-    }
-    if (token !== configured) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    next();
-}
-
-// Clear only sales data
-app.post('/admin/reset/sales', requireAdmin, async (req, res) => {
-    try {
-        await db.query('DELETE FROM sales');
-        res.json({ message: 'Sales history cleared' });
-    } catch (error) {
-        console.error('Error clearing sales:', error);
-        res.status(500).json({ error: 'Failed to clear sales history' });
-    }
-});
-
-// Clear all data (sales -> products -> vendors)
-app.post('/admin/reset/all', requireAdmin, async (req, res) => {
-    try {
-        await db.query('DELETE FROM sales');
-        await db.query('DELETE FROM products');
-        await db.query('DELETE FROM vendors');
-        res.json({ message: 'All data cleared: sales, products, vendors' });
-    } catch (error) {
-        console.error('Error clearing all data:', error);
-        res.status(500).json({ error: 'Failed to clear data' });
     }
 });
 
