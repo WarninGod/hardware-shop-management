@@ -518,6 +518,46 @@ app.get('/reports/daily-sales', async (req, res) => {
 });
 
 // ============================================================================
+// ADMIN RESET ENDPOINTS (Protected)
+// ============================================================================
+
+function requireAdmin(req, res, next) {
+    const token = req.headers['x-admin-token'] || req.query.token || '';
+    const configured = process.env.ADMIN_RESET_TOKEN || '';
+    if (!configured) {
+        return res.status(503).json({ error: 'Admin reset not configured' });
+    }
+    if (token !== configured) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+}
+
+// Clear only sales data
+app.post('/admin/reset/sales', requireAdmin, async (req, res) => {
+    try {
+        await db.query('DELETE FROM sales');
+        res.json({ message: 'Sales history cleared' });
+    } catch (error) {
+        console.error('Error clearing sales:', error);
+        res.status(500).json({ error: 'Failed to clear sales history' });
+    }
+});
+
+// Clear all data (sales -> products -> vendors)
+app.post('/admin/reset/all', requireAdmin, async (req, res) => {
+    try {
+        await db.query('DELETE FROM sales');
+        await db.query('DELETE FROM products');
+        await db.query('DELETE FROM vendors');
+        res.json({ message: 'All data cleared: sales, products, vendors' });
+    } catch (error) {
+        console.error('Error clearing all data:', error);
+        res.status(500).json({ error: 'Failed to clear data' });
+    }
+});
+
+// ============================================================================
 // INITIALIZATION & SERVER START
 // ============================================================================
 
