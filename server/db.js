@@ -1,22 +1,33 @@
 const mysql = require('mysql2/promise');
 const path = require('path');
+const { URL } = require('url');
 
-// Database configuration - use Railway's auto-generated variables
-const dbConfig = {
-    host: process.env.MYSQLHOST || 'localhost',
-    port: process.env.MYSQLPORT || 3306,
-    user: process.env.MYSQLUSER || 'root',
-    password: process.env.MYSQLPASSWORD || 'root',
-    database: process.env.MYSQLDATABASE || 'hardware_shop',
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    multipleStatements: false
-};
+// Parse Railway's DATABASE_URL
+let dbConfig;
+if (process.env.DATABASE_URL) {
+    try {
+        const url = new URL(process.env.DATABASE_URL);
+        dbConfig = {
+            host: url.hostname,
+            port: url.port || 3306,
+            user: url.username,
+            password: url.password || '',
+            database: url.pathname.substring(1),
+            waitForConnections: true,
+            connectionLimit: 10,
+            queueLimit: 0,
+            multipleStatements: false
+        };
+        console.log(`📡 Using DATABASE_URL: ${url.hostname}:${url.port || 3306}`);
+    } catch (e) {
+        console.error('Invalid DATABASE_URL:', e.message);
+        process.exit(1);
+    }
+} else {
+    console.error('❌ DATABASE_URL not set!');
+    process.exit(1);
+}
 
-console.log(`Connecting to ${dbConfig.host}:${dbConfig.port}/${dbConfig.database}`);
-
-// Create connection pool
 const pool = mysql.createPool(dbConfig);
 
 /**
