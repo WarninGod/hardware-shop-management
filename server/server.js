@@ -16,7 +16,13 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../client')));
+// Serve static frontend from /docs (for Railway root and local dev)
+app.use(express.static(path.join(__dirname, '../docs')));
+
+// Root route should serve the frontend index
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '../docs/index.html'));
+});
 
 // ============================================================================
 // VENDOR ENDPOINTS

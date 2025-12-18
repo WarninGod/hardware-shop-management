@@ -250,15 +250,25 @@ async function saveVendor() {
 }
 
 async function deleteVendor(vendorId) {
-    if (!confirm('Are you sure you want to delete this vendor? Products using this vendor cannot be deleted.')) {
+    if (!confirm('Are you sure you want to delete this vendor?')) {
         return;
     }
     
     try {
         showToast('Deleting vendor...', 'warning');
-        // Note: We need to add DELETE endpoint for vendors
-        // For now, show a note
-        showToast('Please remove all products from this vendor first', 'warning');
+        const response = await fetch(`${API_BASE}/vendors/${vendorId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            showToast(data.error || 'Failed to delete vendor', 'error');
+            return;
+        }
+
+        showToast('Vendor deleted successfully', 'success');
+        await loadVendors();
     } catch (error) {
         console.error('Error deleting vendor:', error);
         showToast('Failed to delete vendor', 'error');
@@ -746,3 +756,4 @@ function showToast(message, type = 'info') {
 // Export for debugging
 window.appState = state;
 console.log('✓ Frontend application loaded successfully');
+
