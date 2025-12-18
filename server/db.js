@@ -23,22 +23,15 @@ const pool = mysql.createPool(dbConfig);
 async function initializeDatabase() {
     let connection;
     try {
-        // Connect without database first to create it
-        const tempConnection = await mysql.createConnection({
-            host: dbConfig.host,
-            user: dbConfig.user,
-            password: dbConfig.password
-        });
-
-        // Create database if it doesn't exist
-        await tempConnection.execute(
-            `CREATE DATABASE IF NOT EXISTS ${dbConfig.database} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-        );
+        console.log('Attempting to connect to database...');
         
-        await tempConnection.end();
-
-        // Now connect to the database
+        // Try connecting directly to the database
         connection = await pool.getConnection();
+        console.log('✓ Connected to database');
+        
+        // Test connection
+        await connection.execute('SELECT 1');
+        console.log('✓ Database connection verified');
 
         // Read and execute schema
         const fs = require('fs');
@@ -48,35 +41,43 @@ async function initializeDatabase() {
         // Split statements and execute them idempotently
         const statements = schema.split(';').filter(stmt => stmt.trim());
         
+        let created = 0;
+        let skipped = 0;
+        
         for (const raw of statements) {
-          const statement = raw.trim();
-          if (!statement) continue;
+            const statement = raw.trim();
+            if (!statement) continue;
 
-          try {
-            await connection.execute(statement);
-          } catch (err) {
-            // Ignore duplicate index creation and “already exists” noise
-            const msg = (err && err.message) ? err.message : '';
-            const code = err && err.code;
+            try {
+                await connection.execute(statement);
+                if (statement.toUpperCase().includes('CREATE TABLE')) created++;
+            } catch (err) {
+                const msg = (err && err.message) ? err.message : '';
+                const code = err && err.code;
 
-            // ER_DUP_KEYNAME (1061): Duplicate key name '...'
-            // ER_CANT_DROP_FIELD_OR_KEY (1091) when trying to drop non-existent keys (future-safe)
-            // Skip if index already exists or similar idempotent cases
-            if (
-              code === 'ER_DUP_KEYNAME' ||
-              msg.includes('Duplicate key name') ||
-              msg.includes('already exists') // safety for some DDLs
-            ) {
-              continue;
+                // Skip duplicate key/index/table errors (idempotent)
+                if (
+                    code === 'ER_DUP_KEYNAME' ||
+                    code === 'ER_TABLE_EXISTS_ERROR' ||
+                    msg.includes('Duplicate key name') ||
+                    msg.includes('already exists')
+                ) {
+                    skipped++;
+                    continue;
+                }
+                
+                // Log actual error for debugging
+                console.error(`Error executing statement: ${statement.substring(0, 50)}...`);
+                console.error(`Error code: ${code}, Message: ${msg}`);
+                throw err;
             }
-            throw err;
-          }
         }
 
-        console.log('✓ Database initialized successfully');
+        console.log(`✓ Database initialized successfully (${created} tables created, ${skipped} skipped)`);
         return true;
     } catch (error) {
         console.error('✗ Database initialization error:', error.message);
+        console.error('Stack:', error.stack);
         throw error;
     } finally {
         if (connection) connection.release();
