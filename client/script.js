@@ -1,0 +1,748 @@
+/**
+ * Hardware Shop Management System - Frontend JavaScript
+ * Complete client-side logic for all features
+ */
+
+// API Base URL - automatically detects environment
+const API_BASE = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000'
+    : (window.API_BASE_URL || 'http://localhost:3000');
+
+// State Management
+const state = {
+    vendors: [],
+    products: [],
+    sales: [],
+    currentEditingProductId: null,
+    currentEditingVendorId: null
+};
+
+// ========================================================================
+// INITIALIZATION
+// ========================================================================
+
+document.addEventListener('DOMContentLoaded', () => {
+    initializeApp();
+});
+
+async function initializeApp() {
+    console.log('🚀 Initializing Hardware Shop Management System...');
+    
+    // Setup event listeners
+    setupNavigation();
+    setupModals();
+    setupForms();
+    setupReportTabs();
+    setupSaleSearch();
+    
+    // Load initial data
+    await loadVendors();
+    await loadProducts();
+    await loadSales();
+    await loadDashboard();
+    
+    // Update clock
+    updateClock();
+    setInterval(updateClock, 1000);
+    
+    console.log('✓ Application initialized successfully');
+}
+
+// ========================================================================
+// NAVIGATION & PAGE MANAGEMENT
+// ========================================================================
+
+function setupNavigation() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    
+    navButtons.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const pageName = btn.getAttribute('data-page');
+            switchPage(pageName);
+        });
+    });
+}
+
+function switchPage(pageName) {
+    // Update active nav button
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
+    
+    // Update page title
+    const titles = {
+        dashboard: 'Dashboard',
+        vendors: 'Manage Vendors',
+        products: 'Manage Products',
+        sales: 'Record Sales',
+        reports: 'Reports'
+    };
+    document.getElementById('page-title').textContent = titles[pageName];
+    
+    // Show/hide pages
+    document.querySelectorAll('.page').forEach(page => {
+        page.classList.remove('active');
+    });
+    document.getElementById(pageName).classList.add('active');
+    
+    // Reload data when switching pages
+    if (pageName === 'dashboard') {
+        loadDashboard();
+    } else if (pageName === 'reports') {
+        loadReports();
+    }
+}
+
+// ========================================================================
+// MODAL MANAGEMENT
+// ========================================================================
+
+function setupModals() {
+    // Close modal on X click
+    document.querySelectorAll('.close').forEach(closeBtn => {
+        closeBtn.addEventListener('click', (e) => {
+            const modalId = closeBtn.getAttribute('data-modal');
+            closeModal(modalId);
+        });
+    });
+    
+    // Close modal on secondary button click
+    document.querySelectorAll('[data-modal]').forEach(btn => {
+        if (btn.classList.contains('btn-secondary')) {
+            btn.addEventListener('click', (e) => {
+                const modalId = btn.getAttribute('data-modal');
+                closeModal(modalId);
+            });
+        }
+    });
+    
+    // Open modals
+    document.getElementById('btn-add-vendor').addEventListener('click', () => {
+        openModal('vendor-modal');
+        document.getElementById('vendor-modal-title').textContent = 'Add Vendor';
+        state.currentEditingVendorId = null;
+        document.getElementById('vendor-form').reset();
+    });
+    
+    document.getElementById('btn-add-product').addEventListener('click', () => {
+        openModal('product-modal');
+        document.getElementById('product-modal-title').textContent = 'Add Product';
+        state.currentEditingProductId = null;
+        document.getElementById('product-form').reset();
+        loadVendorDropdown('product-vendor');
+    });
+    
+    document.getElementById('btn-new-sale').addEventListener('click', () => {
+        openModal('sale-modal');
+        document.getElementById('sale-form').reset();
+        loadProductDropdown('sale-product');
+    });
+}
+
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.classList.add('active');
+    modal.style.display = 'flex';
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    modal.classList.remove('active');
+    modal.style.display = 'none';
+}
+
+// ========================================================================
+// FORM MANAGEMENT
+// ========================================================================
+
+function setupForms() {
+    // Vendor Form
+    document.getElementById('vendor-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveVendor();
+    });
+    
+    // Product Form
+    document.getElementById('product-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await saveProduct();
+    });
+    
+    // Sale Form
+    document.getElementById('sale-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await recordSale();
+    });
+    
+    // Sale product dropdown change
+    document.getElementById('sale-product').addEventListener('change', updateSaleInfo);
+    document.getElementById('sale-quantity').addEventListener('input', updateSaleInfo);
+}
+
+// ========================================================================
+// VENDOR MANAGEMENT
+// ========================================================================
+
+async function loadVendors() {
+    try {
+        const response = await fetch(`${API_BASE}/vendors`);
+        if (!response.ok) throw new Error('Failed to load vendors');
+        
+        state.vendors = await response.json();
+        renderVendors();
+    } catch (error) {
+        console.error('Error loading vendors:', error);
+        showToast('Failed to load vendors', 'error');
+    }
+}
+
+function renderVendors() {
+    const tbody = document.getElementById('vendors-list');
+    
+    if (state.vendors.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="no-data">No vendors added yet</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = state.vendors.map(vendor => `
+        <tr>
+            <td>${vendor.id}</td>
+            <td>${vendor.name}</td>
+            <td>${vendor.phone || '-'}</td>
+            <td>
+                <div class="table-actions">
+                    <button class="btn btn-danger btn-small" onclick="deleteVendor(${vendor.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function saveVendor() {
+    const name = document.getElementById('vendor-name').value.trim();
+    const phone = document.getElementById('vendor-phone').value.trim();
+    
+    if (!name) {
+        showToast('Vendor name is required', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/vendors`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone: phone || null })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save vendor');
+        }
+        
+        showToast('Vendor saved successfully', 'success');
+        closeModal('vendor-modal');
+        await loadVendors();
+    } catch (error) {
+        console.error('Error saving vendor:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+async function deleteVendor(vendorId) {
+    if (!confirm('Are you sure you want to delete this vendor? Products using this vendor cannot be deleted.')) {
+        return;
+    }
+    
+    try {
+        showToast('Deleting vendor...', 'warning');
+        // Note: We need to add DELETE endpoint for vendors
+        // For now, show a note
+        showToast('Please remove all products from this vendor first', 'warning');
+    } catch (error) {
+        console.error('Error deleting vendor:', error);
+        showToast('Failed to delete vendor', 'error');
+    }
+}
+
+async function loadVendorDropdown(elementId) {
+    const select = document.getElementById(elementId);
+    select.innerHTML = '<option value="">Select Vendor</option>' + 
+        state.vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+}
+
+// ========================================================================
+// PRODUCT MANAGEMENT
+// ========================================================================
+
+async function loadProducts() {
+    try {
+        const response = await fetch(`${API_BASE}/products`);
+        if (!response.ok) throw new Error('Failed to load products');
+        
+        state.products = await response.json();
+        renderProducts();
+    } catch (error) {
+        console.error('Error loading products:', error);
+        showToast('Failed to load products', 'error');
+    }
+}
+
+function renderProducts() {
+    const tbody = document.getElementById('products-list');
+    
+    if (state.products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="no-data">No products added yet</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = state.products.map(product => `
+        <tr>
+            <td>${product.id}</td>
+            <td>${product.name}</td>
+            <td>${product.category}</td>
+            <td>${product.vendor_name}</td>
+            <td>₹${parseFloat(product.selling_price).toFixed(2)}</td>
+            <td><strong>${product.stock_quantity}</strong></td>
+            <td>
+                <div class="table-actions">
+                    <button class="btn btn-success btn-small" onclick="editProduct(${product.id})">Edit</button>
+                    <button class="btn btn-danger btn-small" onclick="deleteProduct(${product.id})">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function saveProduct() {
+    const name = document.getElementById('product-name').value.trim();
+    const category = document.getElementById('product-category').value.trim();
+    const vendor_id = document.getElementById('product-vendor').value;
+    const cost_price = document.getElementById('product-cost').value;
+    const selling_price = document.getElementById('product-selling').value;
+    const stock_quantity = document.getElementById('product-stock').value;
+    
+    if (!name || !category || !vendor_id || !cost_price || !selling_price) {
+        showToast('All fields are required', 'error');
+        return;
+    }
+    
+    try {
+        const method = state.currentEditingProductId ? 'PUT' : 'POST';
+        const url = state.currentEditingProductId 
+            ? `${API_BASE}/products/${state.currentEditingProductId}`
+            : `${API_BASE}/products`;
+        
+        const response = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                category,
+                vendor_id: parseInt(vendor_id),
+                cost_price: parseFloat(cost_price),
+                selling_price: parseFloat(selling_price),
+                stock_quantity: parseInt(stock_quantity) || 0
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save product');
+        }
+        
+        showToast(state.currentEditingProductId ? 'Product updated successfully' : 'Product added successfully', 'success');
+        closeModal('product-modal');
+        await loadProducts();
+    } catch (error) {
+        console.error('Error saving product:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+async function editProduct(productId) {
+    const product = state.products.find(p => p.id === productId);
+    if (!product) return;
+    
+    state.currentEditingProductId = productId;
+    document.getElementById('product-modal-title').textContent = 'Edit Product';
+    document.getElementById('product-name').value = product.name;
+    document.getElementById('product-category').value = product.category;
+    document.getElementById('product-vendor').value = product.vendor_id;
+    document.getElementById('product-stock').value = product.stock_quantity;
+    
+    // Note: cost_price is not fetched in the GET endpoint for security
+    // In production, you might need a separate endpoint for editing
+    openModal('product-modal');
+    await loadVendorDropdown('product-vendor');
+    document.getElementById('product-vendor').value = product.vendor_id;
+}
+
+async function deleteProduct(productId) {
+    if (!confirm('Are you sure you want to delete this product?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/products/${productId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to delete product');
+        }
+        
+        showToast('Product deleted successfully', 'success');
+        await loadProducts();
+    } catch (error) {
+        console.error('Error deleting product:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+async function loadProductDropdown(elementId) {
+    const select = document.getElementById(elementId);
+    select.innerHTML = '<option value="">Select Product</option>' + 
+        state.products
+            .filter(p => p.stock_quantity > 0)
+            .map(p => `<option value="${p.id}" data-price="${p.selling_price}" data-stock="${p.stock_quantity}">${p.name}</option>`)
+            .join('');
+}
+
+// ========================================================================
+// SALES MANAGEMENT
+// ========================================================================
+
+async function loadSales() {
+    try {
+        const response = await fetch(`${API_BASE}/sales`);
+        if (!response.ok) throw new Error('Failed to load sales');
+        
+        state.sales = await response.json();
+        renderSales();
+        renderDashboardSales();
+    } catch (error) {
+        console.error('Error loading sales:', error);
+        showToast('Failed to load sales', 'error');
+    }
+}
+
+function renderSales() {
+    const tbody = document.getElementById('sales-list');
+    
+    if (state.sales.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">No sales recorded yet</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = state.sales.slice(0, 50).map(sale => `
+        <tr>
+            <td>#${sale.id}</td>
+            <td>${sale.product_name}</td>
+            <td>${sale.quantity}</td>
+            <td>₹${parseFloat(sale.total).toFixed(2)}</td>
+            <td>₹${parseFloat(sale.profit).toFixed(2)}</td>
+            <td>${formatDate(sale.sale_date)}</td>
+        </tr>
+    `).join('');
+}
+
+function renderDashboardSales() {
+    const tbody = document.getElementById('dashboard-sales-list');
+    
+    if (state.sales.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No sales yet</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = state.sales.slice(0, 10).map(sale => `
+        <tr>
+            <td>${sale.product_name}</td>
+            <td>${sale.quantity}</td>
+            <td>₹${parseFloat(sale.total).toFixed(2)}</td>
+            <td>₹${parseFloat(sale.profit).toFixed(2)}</td>
+            <td>${formatDate(sale.sale_date)}</td>
+        </tr>
+    `).join('');
+}
+
+function updateSaleInfo() {
+    const productSelect = document.getElementById('sale-product');
+    const quantityInput = document.getElementById('sale-quantity');
+    
+    const selectedOption = productSelect.options[productSelect.selectedIndex];
+    if (!selectedOption.value) {
+        resetSaleInfo();
+        return;
+    }
+    
+    const price = parseFloat(selectedOption.getAttribute('data-price'));
+    const stock = parseInt(selectedOption.getAttribute('data-stock'));
+    const quantity = parseInt(quantityInput.value) || 0;
+    
+    document.getElementById('sale-unit-price').textContent = price.toFixed(2);
+    document.getElementById('sale-available-stock').textContent = stock;
+    
+    if (quantity > 0) {
+        const total = (price * quantity).toFixed(2);
+        document.getElementById('sale-total-amount').textContent = total;
+    } else {
+        document.getElementById('sale-total-amount').textContent = '0.00';
+    }
+}
+
+function resetSaleInfo() {
+    document.getElementById('sale-unit-price').textContent = '0.00';
+    document.getElementById('sale-available-stock').textContent = '0';
+    document.getElementById('sale-total-amount').textContent = '0.00';
+}
+
+async function recordSale() {
+    const product_id = document.getElementById('sale-product').value;
+    const quantity = parseInt(document.getElementById('sale-quantity').value);
+    
+    if (!product_id || !quantity || quantity <= 0) {
+        showToast('Please select a product and valid quantity', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}/sales`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                product_id: parseInt(product_id),
+                quantity
+            })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to record sale');
+        }
+        
+        const sale = await response.json();
+        showToast(`Sale recorded! Profit: ₹${sale.profit.toFixed(2)}`, 'success');
+        closeModal('sale-modal');
+        await loadSales();
+        await loadProducts(); // Refresh products for updated stock
+        await loadDashboard(); // Refresh dashboard stats
+    } catch (error) {
+        console.error('Error recording sale:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// ========================================================================
+// SALES PRODUCT SEARCH/FILTER
+// ========================================================================
+
+function setupSaleSearch() {
+    const saleSearch = document.getElementById('sale-product-search');
+    if (saleSearch) {
+        saleSearch.addEventListener('input', (e) => filterSaleProducts(e.target.value));
+    }
+}
+
+function filterSaleProducts(query) {
+    const select = document.getElementById('sale-product');
+    if (!select) return;
+    const prevSelected = select.value;
+    const q = (query || '').trim().toLowerCase();
+
+    const filtered = state.products
+        .filter(p => p.stock_quantity > 0)
+        .filter(p => {
+            if (!q) return true;
+            const name = (p.name || '').toLowerCase();
+            const category = (p.category || '').toLowerCase();
+            const vendor = (p.vendor_name || '').toLowerCase();
+            return name.includes(q) || category.includes(q) || vendor.includes(q);
+        });
+
+    select.innerHTML = '<option value="">Select Product</option>' +
+        filtered.map(p => `<option value="${p.id}" data-price="${p.selling_price}" data-stock="${p.stock_quantity}">${p.name}</option>`).join('');
+
+    // Restore selection if still present; otherwise reset sale info
+    if (prevSelected && filtered.some(p => String(p.id) === String(prevSelected))) {
+        select.value = prevSelected;
+        updateSaleInfo();
+    } else {
+        resetSaleInfo();
+    }
+}
+
+// ========================================================================
+// DASHBOARD
+// ========================================================================
+
+async function loadDashboard() {
+    try {
+        const response = await fetch(`${API_BASE}/reports/summary`);
+        if (!response.ok) throw new Error('Failed to load summary');
+        
+        const summary = await response.json();
+        
+        // Calculate total stock
+        const totalStock = state.products.reduce((sum, p) => sum + p.stock_quantity, 0);
+        
+        // Update stats
+        document.getElementById('stat-total-sales').textContent = summary.total_sales;
+        document.getElementById('stat-revenue').textContent = `₹${summary.total_sales_amount.toFixed(2)}`;
+        document.getElementById('stat-profit').textContent = `₹${summary.total_profit.toFixed(2)}`;
+        document.getElementById('stat-stock').textContent = totalStock;
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+    }
+}
+
+// ========================================================================
+// REPORTS
+// ========================================================================
+
+function setupReportTabs() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tabName = btn.getAttribute('data-tab');
+            switchReportTab(tabName);
+        });
+    });
+}
+
+function switchReportTab(tabName) {
+    // Update active tab button
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    
+    // Show/hide tab content
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.getElementById(`${tabName}-tab`).classList.add('active');
+}
+
+async function loadReports() {
+    try {
+        const [summary, productProfit, vendorProfit, dailySales] = await Promise.all([
+            fetch(`${API_BASE}/reports/summary`).then(r => r.json()),
+            fetch(`${API_BASE}/reports/product-profit`).then(r => r.json()),
+            fetch(`${API_BASE}/reports/vendor-profit`).then(r => r.json()),
+            fetch(`${API_BASE}/reports/daily-sales`).then(r => r.json())
+        ]);
+        
+        // Render summary
+        document.getElementById('report-total-sales').textContent = summary.total_sales;
+        document.getElementById('report-total-qty').textContent = summary.total_quantity;
+        document.getElementById('report-total-revenue').textContent = `₹${summary.total_sales_amount.toFixed(2)}`;
+        document.getElementById('report-total-profit').textContent = `₹${summary.total_profit.toFixed(2)}`;
+        
+        // Render product profit report
+        renderProductProfitReport(productProfit);
+        
+        // Render vendor profit report
+        renderVendorProfitReport(vendorProfit);
+        
+        // Render daily sales report
+        renderDailySalesReport(dailySales);
+    } catch (error) {
+        console.error('Error loading reports:', error);
+        showToast('Failed to load reports', 'error');
+    }
+}
+
+function renderProductProfitReport(products) {
+    const tbody = document.getElementById('product-report-list');
+    
+    if (products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">No data available</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = products.map(p => `
+        <tr>
+            <td>${p.name}</td>
+            <td>${p.total_sales}</td>
+            <td>${p.total_quantity}</td>
+            <td>₹${p.total_revenue.toFixed(2)}</td>
+            <td>₹${p.total_profit.toFixed(2)}</td>
+            <td>${p.current_stock}</td>
+        </tr>
+    `).join('');
+}
+
+function renderVendorProfitReport(vendors) {
+    const tbody = document.getElementById('vendor-report-list');
+    
+    if (vendors.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="no-data">No data available</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = vendors.map(v => `
+        <tr>
+            <td>${v.name}</td>
+            <td>${v.total_sales}</td>
+            <td>${v.total_quantity}</td>
+            <td>₹${v.total_revenue.toFixed(2)}</td>
+            <td>₹${v.total_profit.toFixed(2)}</td>
+            <td>${v.product_count}</td>
+        </tr>
+    `).join('');
+}
+
+function renderDailySalesReport(daily) {
+    const tbody = document.getElementById('daily-report-list');
+    
+    if (daily.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No data available</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = daily.map(d => `
+        <tr>
+            <td>${d.date}</td>
+            <td>${d.total_sales}</td>
+            <td>${d.total_quantity}</td>
+            <td>₹${d.total_revenue.toFixed(2)}</td>
+            <td>₹${d.total_profit.toFixed(2)}</td>
+        </tr>
+    `).join('');
+}
+
+// ========================================================================
+// UTILITY FUNCTIONS
+// ========================================================================
+
+function formatDate(dateString) {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function updateClock() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString('en-IN');
+    document.getElementById('current-time').textContent = timeString;
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast show ${type}`;
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// Export for debugging
+window.appState = state;
+console.log('✓ Frontend application loaded successfully');

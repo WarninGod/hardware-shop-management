@@ -1,0 +1,58 @@
+════════════════════════════════════════════════════════════════════════════════
+   🚀 QUICK START: GitHub Pages Deployment (PowerShell Commands)
+════════════════════════════════════════════════════════════════════════════════
+
+Copy and paste these commands into PowerShell to deploy:
+
+# 1. Navigate to project
+cd C:\Users\FSOS\Documents\Delhi47Project
+
+# 2. Initialize git repository
+git init
+
+# 3. Add all files
+git add .
+
+# 4. Commit
+git commit -m "Initial commit: Hardware Shop Management System"
+
+# 5. Create GitHub repository first, then run:
+# (Replace YOUR_USERNAME with your GitHub username)
+git remote add origin https://github.com/YOUR_USERNAME/hardware-shop-management.git
+
+# 6. Push to GitHub
+git branch -M main
+git push -u origin main
+
+════════════════════════════════════════════════════════════════════════════════
+After pushing to GitHub:
+════════════════════════════════════════════════════════════════════════════════
+
+1. Go to: https://github.com/YOUR_USERNAME/hardware-shop-management
+2. Click: Settings → Pages
+3. Source: Deploy from a branch
+4. Branch: main
+5. Folder: /client (IMPORTANT!)
+6. Click: Save
+7. Wait 2-3 minutes
+
+Your site will be live at:
+https://YOUR_USERNAME.github.io/hardware-shop-management/
+
+════════════════════════════════════════════════════════════════════════════════
+Next Step: Deploy Backend
+════════════════════════════════════════════════════════════════════════════════
+
+Frontend is now on GitHub Pages, but you need to deploy the backend separately.
+
+Recommended: Railway.app (easiest)
+  1. Sign up: https://railway.app
+  2. Connect GitHub repo
+  3. Add MySQL database
+  4. Auto-deploys!
+
+Then update client/config.js with your Railway backend URL.
+
+Full guide: See DEPLOYMENT_GUIDE.txt
+
+════════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,513 @@
+API TESTING GUIDE - Hardware Shop Management System
+═══════════════════════════════════════════════════════════════════════════════
+
+This guide shows how to test all API endpoints using curl (command line)
+or Postman (GUI tool).
+
+═══════════════════════════════════════════════════════════════════════════════
+PREREQUISITES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Server must be running:
+   npm start
+   (Should show: "✓ Server running at http://localhost:3000")
+
+2. For curl testing: Open Command Prompt or PowerShell
+
+3. For Postman testing: Download from https://www.postman.com/downloads/
+
+═══════════════════════════════════════════════════════════════════════════════
+VENDOR ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. CREATE VENDOR (POST)
+──────────────────────
+
+URL: http://localhost:3000/vendors
+Method: POST
+Content-Type: application/json
+
+Body (JSON):
+{
+  "name": "Ace Hardware Suppliers",
+  "phone": "9876543210"
+}
+
+Curl Command:
+curl -X POST http://localhost:3000/vendors ^
+  -H "Content-Type: application/json" ^
+  -d "{\"name\":\"Ace Hardware\",\"phone\":\"9876543210\"}"
+
+Expected Response (201):
+{
+  "id": 1,
+  "name": "Ace Hardware Suppliers",
+  "phone": "9876543210",
+  "message": "Vendor created successfully"
+}
+
+Postman Steps:
+1. New → Request
+2. Method: POST
+3. URL: http://localhost:3000/vendors
+4. Body → raw → JSON
+5. Paste JSON above
+6. Send
+
+──────────────────────
+
+2. GET ALL VENDORS (GET)
+────────────────────────
+
+URL: http://localhost:3000/vendors
+Method: GET
+No body needed
+
+Curl Command:
+curl http://localhost:3000/vendors
+
+Expected Response (200):
+[
+  {
+    "id": 1,
+    "name": "Ace Hardware Suppliers",
+    "phone": "9876543210",
+    "created_at": "2024-12-18T10:30:00.000Z"
+  }
+]
+
+═══════════════════════════════════════════════════════════════════════════════
+PRODUCT ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. CREATE PRODUCT (POST)
+────────────────────────
+
+URL: http://localhost:3000/products
+Method: POST
+Content-Type: application/json
+
+Body (JSON):
+{
+  "name": "Claw Hammer",
+  "category": "Tools",
+  "vendor_id": 1,
+  "cost_price": 80.00,
+  "selling_price": 120.00,
+  "stock_quantity": 50
+}
+
+Curl Command:
+curl -X POST http://localhost:3000/products ^
+  -H "Content-Type: application/json" ^
+  -d "{\"name\":\"Claw Hammer\",\"category\":\"Tools\",\"vendor_id\":1,\"cost_price\":80.00,\"selling_price\":120.00,\"stock_quantity\":50}"
+
+Expected Response (201):
+{
+  "id": 1,
+  "name": "Claw Hammer",
+  "category": "Tools",
+  "vendor_id": 1,
+  "cost_price": 80.00,
+  "selling_price": 120.00,
+  "stock_quantity": 50,
+  "message": "Product created successfully"
+}
+
+Notes:
+- Selling price must be > Cost price
+- Stock quantity cannot be negative
+- Vendor ID must exist
+
+──────────────────────
+
+2. GET ALL PRODUCTS (GET)
+──────────────────────────
+
+URL: http://localhost:3000/products
+Method: GET
+
+Curl Command:
+curl http://localhost:3000/products
+
+Expected Response (200):
+[
+  {
+    "id": 1,
+    "name": "Claw Hammer",
+    "category": "Tools",
+    "vendor_id": 1,
+    "vendor_name": "Ace Hardware Suppliers",
+    "selling_price": "120.00",
+    "stock_quantity": 50,
+    "created_at": "2024-12-18T10:35:00.000Z"
+  }
+]
+
+Note: cost_price NOT included (hidden for security)
+
+──────────────────────
+
+3. UPDATE PRODUCT (PUT)
+────────────────────────
+
+URL: http://localhost:3000/products/1
+Method: PUT
+Content-Type: application/json
+
+Body (JSON):
+{
+  "name": "Claw Hammer 500g",
+  "category": "Tools",
+  "vendor_id": 1,
+  "cost_price": 85.00,
+  "selling_price": 130.00,
+  "stock_quantity": 45
+}
+
+Curl Command:
+curl -X PUT http://localhost:3000/products/1 ^
+  -H "Content-Type: application/json" ^
+  -d "{\"name\":\"Claw Hammer 500g\",\"category\":\"Tools\",\"vendor_id\":1,\"cost_price\":85.00,\"selling_price\":130.00,\"stock_quantity\":45}"
+
+Expected Response (200):
+{
+  "id": 1,
+  "name": "Claw Hammer 500g",
+  "category": "Tools",
+  "vendor_id": 1,
+  "cost_price": 85.00,
+  "selling_price": 130.00,
+  "stock_quantity": 45,
+  "message": "Product updated successfully"
+}
+
+──────────────────────
+
+4. DELETE PRODUCT (DELETE)
+──────────────────────────
+
+URL: http://localhost:3000/products/1
+Method: DELETE
+
+Curl Command:
+curl -X DELETE http://localhost:3000/products/1
+
+Expected Response (200):
+{
+  "message": "Product deleted successfully"
+}
+
+Error if product has sales:
+{
+  "error": "Cannot delete product with existing sales records"
+}
+
+═══════════════════════════════════════════════════════════════════════════════
+SALES ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. CREATE SALE (POST)
+─────────────────────
+
+URL: http://localhost:3000/sales
+Method: POST
+Content-Type: application/json
+
+Body (JSON):
+{
+  "product_id": 1,
+  "quantity": 5
+}
+
+Curl Command:
+curl -X POST http://localhost:3000/sales ^
+  -H "Content-Type: application/json" ^
+  -d "{\"product_id\":1,\"quantity\":5}"
+
+Expected Response (201):
+{
+  "id": 1,
+  "product_id": 1,
+  "quantity": 5,
+  "total": 600.00,
+  "profit": 200.00,
+  "sale_date": "2024-12-18T10:40:00.000Z",
+  "message": "Sale recorded successfully"
+}
+
+Calculation (from above):
+  - Unit Price: 120.00 (selling_price)
+  - Quantity: 5
+  - Total: 120 × 5 = 600.00
+  - Cost: 80 × 5 = 400.00
+  - Profit: 600 - 400 = 200.00
+  - Stock reduced: 50 - 5 = 45
+
+Errors:
+- Stock not available: "Insufficient stock. Available: 40, Requested: 50"
+- Invalid quantity: "Quantity must be a positive number"
+- Product not found: "Product not found"
+
+──────────────────────
+
+2. GET ALL SALES (GET)
+──────────────────────
+
+URL: http://localhost:3000/sales
+Method: GET
+
+Curl Command:
+curl http://localhost:3000/sales
+
+Expected Response (200):
+[
+  {
+    "id": 1,
+    "product_id": 1,
+    "product_name": "Claw Hammer",
+    "quantity": 5,
+    "total": "600.00",
+    "profit": "200.00",
+    "sale_date": "2024-12-18T10:40:00.000Z"
+  }
+]
+
+═══════════════════════════════════════════════════════════════════════════════
+REPORT ENDPOINTS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. SUMMARY REPORT (GET)
+───────────────────────
+
+URL: http://localhost:3000/reports/summary
+Method: GET
+
+Curl Command:
+curl http://localhost:3000/reports/summary
+
+Expected Response (200):
+{
+  "total_sales": 1,
+  "total_quantity": 5,
+  "total_sales_amount": 600.00,
+  "total_profit": 200.00
+}
+
+──────────────────────
+
+2. PRODUCT PROFIT REPORT (GET)
+──────────────────────────────
+
+URL: http://localhost:3000/reports/product-profit
+Method: GET
+
+Curl Command:
+curl http://localhost:3000/reports/product-profit
+
+Expected Response (200):
+[
+  {
+    "id": 1,
+    "name": "Claw Hammer",
+    "total_sales": 1,
+    "total_quantity": 5,
+    "total_revenue": 600.00,
+    "total_profit": 200.00,
+    "current_stock": 45
+  }
+]
+
+──────────────────────
+
+3. VENDOR PROFIT REPORT (GET)
+──────────────────────────────
+
+URL: http://localhost:3000/reports/vendor-profit
+Method: GET
+
+Curl Command:
+curl http://localhost:3000/reports/vendor-profit
+
+Expected Response (200):
+[
+  {
+    "id": 1,
+    "name": "Ace Hardware Suppliers",
+    "total_sales": 1,
+    "total_quantity": 5,
+    "total_revenue": 600.00,
+    "total_profit": 200.00,
+    "product_count": 1
+  }
+]
+
+──────────────────────
+
+4. DAILY SALES REPORT (GET)
+────────────────────────────
+
+URL: http://localhost:3000/reports/daily-sales
+Method: GET
+
+Curl Command:
+curl http://localhost:3000/reports/daily-sales
+
+Expected Response (200):
+[
+  {
+    "date": "2024-12-18",
+    "total_sales": 1,
+    "total_quantity": 5,
+    "total_revenue": 600.00,
+    "total_profit": 200.00
+  }
+]
+
+═══════════════════════════════════════════════════════════════════════════════
+COMPLETE WORKFLOW TEST
+═══════════════════════════════════════════════════════════════════════════════
+
+Run these commands in sequence to test the entire workflow:
+
+Step 1: Create Vendor
+curl -X POST http://localhost:3000/vendors ^
+  -H "Content-Type: application/json" ^
+  -d "{\"name\":\"Test Vendor\",\"phone\":\"9876543210\"}"
+
+Step 2: Create Product (use vendor_id from Step 1 response)
+curl -X POST http://localhost:3000/products ^
+  -H "Content-Type: application/json" ^
+  -d "{\"name\":\"Test Product\",\"category\":\"Test\",\"vendor_id\":1,\"cost_price\":100,\"selling_price\":150,\"stock_quantity\":100}"
+
+Step 3: Record Sale (use product_id from Step 2 response)
+curl -X POST http://localhost:3000/sales ^
+  -H "Content-Type: application/json" ^
+  -d "{\"product_id\":1,\"quantity\":10}"
+
+Step 4: Check Summary
+curl http://localhost:3000/reports/summary
+
+Step 5: Check Product Profit
+curl http://localhost:3000/reports/product-profit
+
+Step 6: Check Vendor Profit
+curl http://localhost:3000/reports/vendor-profit
+
+Expected Results:
+  - 1 sale recorded
+  - 10 units sold
+  - Revenue: 1500 (150 × 10)
+  - Profit: 500 ((150-100) × 10)
+  - Stock reduced to 90 (100 - 10)
+
+═══════════════════════════════════════════════════════════════════════════════
+ERROR HANDLING
+═══════════════════════════════════════════════════════════════════════════════
+
+Common Error Responses:
+
+400 Bad Request:
+{
+  "error": "Validation error message"
+}
+
+Example:
+{
+  "error": "Selling price must be greater than cost price"
+}
+
+404 Not Found:
+{
+  "error": "Product not found"
+}
+
+409 Conflict:
+{
+  "error": "Vendor name already exists"
+}
+
+500 Internal Server Error:
+{
+  "error": "Failed to create vendor"
+}
+
+═══════════════════════════════════════════════════════════════════════════════
+POSTMAN COLLECTION EXPORT
+═══════════════════════════════════════════════════════════════════════════════
+
+You can create a Postman Collection with all endpoints:
+
+1. Open Postman
+2. Create a new Collection: "Hardware Shop API"
+3. Add requests:
+   - POST /vendors
+   - GET /vendors
+   - POST /products
+   - GET /products
+   - PUT /products/:id
+   - DELETE /products/:id
+   - POST /sales
+   - GET /sales
+   - GET /reports/summary
+   - GET /reports/product-profit
+   - GET /reports/vendor-profit
+   - GET /reports/daily-sales
+
+4. Set base URL: http://localhost:3000
+
+═══════════════════════════════════════════════════════════════════════════════
+TIPS FOR TESTING
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Always use correct Content-Type: application/json
+
+2. Verify required fields in request body
+
+3. Check JSON syntax (use https://jsonlint.com if needed)
+
+4. Test error cases:
+   - Invalid vendor_id
+   - Stock exceeding available quantity
+   - Selling price < cost price
+   - Negative quantities/prices
+
+5. Use browser DevTools (F12) to see API calls
+   - Network tab shows requests/responses
+   - Console tab shows errors
+
+6. Check server console for detailed error logs
+
+7. Test with curl first, then use Postman for complex scenarios
+
+═══════════════════════════════════════════════════════════════════════════════
+DEBUGGING
+═══════════════════════════════════════════════════════════════════════════════
+
+If API calls fail:
+
+1. Check server is running:
+   - Should see "✓ Server running at http://localhost:3000"
+
+2. Check database connection:
+   - Should see "✓ Database initialized successfully"
+
+3. Check request format:
+   - Method (POST, GET, PUT, DELETE)
+   - URL (correct path and ID)
+   - Headers (Content-Type: application/json)
+   - Body (valid JSON)
+
+4. Check response status:
+   - 200: Success
+   - 201: Created
+   - 400: Bad request (check validation)
+   - 404: Not found (check ID)
+   - 500: Server error (check server logs)
+
+5. Check server console for errors:
+   - Should show error messages with details
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Happy testing! 🧪

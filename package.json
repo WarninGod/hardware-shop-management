@@ -1,0 +1,28 @@
+{
+  "name": "hardware-shop-management",
+  "version": "1.0.0",
+  "description": "Complete hardware shop management system with REST API",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "nodemon server/server.js"
+  },
+  "keywords": [
+    "hardware",
+    "shop",
+    "management",
+    "inventory",
+    "sales"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "mysql2": "^3.6.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

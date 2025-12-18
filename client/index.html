@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hardware Shop Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <h1>⚙️ Hardware Shop</h1>
+                <p>Management System</p>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-page="dashboard">
+                    📊 Dashboard
+                </button>
+                <button class="nav-btn" data-page="vendors">
+                    🏢 Vendors
+                </button>
+                <button class="nav-btn" data-page="products">
+                    📦 Products
+                </button>
+                <button class="nav-btn" data-page="sales">
+                    💳 Sales
+                </button>
+                <button class="nav-btn" data-page="reports">
+                    📈 Reports
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="header">
+                <h2 id="page-title">Dashboard</h2>
+                <div class="header-info">
+                    <span id="current-time"></span>
+                </div>
+            </header>
+
+            <!-- Content Pages -->
+            <div class="content">
+                <!-- DASHBOARD PAGE -->
+                <section id="dashboard" class="page active">
+                    <div class="dashboard-grid">
+                        <div class="stat-card">
+                            <h3>Total Sales</h3>
+                            <p class="stat-value" id="stat-total-sales">0</p>
+                            <span class="stat-label">Transactions</span>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Revenue</h3>
+                            <p class="stat-value" id="stat-revenue">₹0.00</p>
+                            <span class="stat-label">Amount</span>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Profit</h3>
+                            <p class="stat-value" id="stat-profit">₹0.00</p>
+                            <span class="stat-label">Margin</span>
+                        </div>
+                        <div class="stat-card">
+                            <h3>Total Stock</h3>
+                            <p class="stat-value" id="stat-stock">0</p>
+                            <span class="stat-label">Units</span>
+                        </div>
+                    </div>
+
+                    <div class="page-section">
+                        <h3>Recent Sales</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Total</th>
+                                    <th>Profit</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboard-sales-list">
+                                <tr><td colspan="5" class="no-data">No sales yet</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- VENDORS PAGE -->
+                <section id="vendors" class="page">
+                    <div class="page-header">
+                        <h3>Manage Vendors</h3>
+                        <button class="btn btn-primary" id="btn-add-vendor">+ Add Vendor</button>
+                    </div>
+
+                    <!-- Vendor Form Modal -->
+                    <div id="vendor-modal" class="modal">
+                        <div class="modal-content">
+                            <span class="close" data-modal="vendor-modal">&times;</span>
+                            <h2 id="vendor-modal-title">Add Vendor</h2>
+                            <form id="vendor-form">
+                                <div class="form-group">
+                                    <label for="vendor-name">Vendor Name *</label>
+                                    <input type="text" id="vendor-name" placeholder="Enter vendor name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="vendor-phone">Phone (Optional)</label>
+                                    <input type="tel" id="vendor-phone" placeholder="Enter phone number">
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">Save Vendor</button>
+                                    <button type="button" class="btn btn-secondary" data-modal="vendor-modal">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Vendors List -->
+                    <div class="page-section">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendors-list">
+                                <tr><td colspan="4" class="no-data">No vendors added yet</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- PRODUCTS PAGE -->
+                <section id="products" class="page">
+                    <div class="page-header">
+                        <h3>Manage Products</h3>
+                        <button class="btn btn-primary" id="btn-add-product">+ Add Product</button>
+                    </div>
+
+                    <!-- Product Form Modal -->
+                    <div id="product-modal" class="modal">
+                        <div class="modal-content">
+                            <span class="close" data-modal="product-modal">&times;</span>
+                            <h2 id="product-modal-title">Add Product</h2>
+                            <form id="product-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="product-name">Product Name *</label>
+                                        <input type="text" id="product-name" placeholder="Enter product name" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="product-category">Category *</label>
+                                        <input type="text" id="product-category" placeholder="e.g., Tools, Hardware" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="product-vendor">Vendor *</label>
+                                        <select id="product-vendor" required>
+                                            <option value="">Select Vendor</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="product-cost">Cost Price (₹) *</label>
+                                        <input type="number" id="product-cost" placeholder="0.00" step="0.01" min="0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="product-selling">Selling Price (₹) *</label>
+                                        <input type="number" id="product-selling" placeholder="0.00" step="0.01" min="0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="product-stock">Stock Quantity *</label>
+                                        <input type="number" id="product-stock" placeholder="0" min="0" required>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">Save Product</button>
+                                    <button type="button" class="btn btn-secondary" data-modal="product-modal">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Products List -->
+                    <div class="page-section">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Category</th>
+                                    <th>Vendor</th>
+                                    <th>Selling Price</th>
+                                    <th>Stock</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products-list">
+                                <tr><td colspan="7" class="no-data">No products added yet</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- SALES PAGE -->
+                <section id="sales" class="page">
+                    <div class="page-header">
+                        <h3>Record Sales</h3>
+                        <button class="btn btn-primary" id="btn-new-sale">+ New Sale</button>
+                    </div>
+
+                    <!-- Sale Form Modal -->
+                    <div id="sale-modal" class="modal">
+                        <div class="modal-content">
+                            <span class="close" data-modal="sale-modal">&times;</span>
+                            <h2>Record New Sale</h2>
+                            <form id="sale-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="sale-product">Product *</label>
+                                        <input type="text" id="sale-product-search" placeholder="Search products by name, category, or vendor">
+                                        <select id="sale-product" required>
+                                            <option value="">Select Product</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="sale-quantity">Quantity *</label>
+                                        <input type="number" id="sale-quantity" placeholder="0" min="1" required>
+                                    </div>
+                                </div>
+                                <div class="sale-info">
+                                    <div class="info-item">
+                                        <span>Unit Price (₹):</span>
+                                        <span id="sale-unit-price">0.00</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span>Available Stock:</span>
+                                        <span id="sale-available-stock">0</span>
+                                    </div>
+                                    <div class="info-item highlight">
+                                        <span>Total Amount (₹):</span>
+                                        <span id="sale-total-amount">0.00</span>
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">Complete Sale</button>
+                                    <button type="button" class="btn btn-secondary" data-modal="sale-modal">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Sales History -->
+                    <div class="page-section">
+                        <h3>Sales History</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Sale ID</th>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Total Amount</th>
+                                    <th>Profit</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-list">
+                                <tr><td colspan="6" class="no-data">No sales recorded yet</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- REPORTS PAGE -->
+                <section id="reports" class="page">
+                    <div class="reports-tabs">
+                        <button class="tab-btn active" data-tab="summary">Summary</button>
+                        <button class="tab-btn" data-tab="product">Product Profit</button>
+                        <button class="tab-btn" data-tab="vendor">Vendor Profit</button>
+                        <button class="tab-btn" data-tab="daily">Daily Sales</button>
+                    </div>
+
+                    <!-- Summary Report -->
+                    <div id="summary-tab" class="tab-content active">
+                        <div class="report-summary">
+                            <div class="summary-card">
+                                <h4>Total Sales Transactions</h4>
+                                <p class="summary-value" id="report-total-sales">0</p>
+                            </div>
+                            <div class="summary-card">
+                                <h4>Total Quantity Sold</h4>
+                                <p class="summary-value" id="report-total-qty">0</p>
+                            </div>
+                            <div class="summary-card">
+                                <h4>Total Revenue</h4>
+                                <p class="summary-value" id="report-total-revenue">₹0.00</p>
+                            </div>
+                            <div class="summary-card">
+                                <h4>Total Profit</h4>
+                                <p class="summary-value" id="report-total-profit">₹0.00</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Product Profit Report -->
+                    <div id="product-tab" class="tab-content">
+                        <h3>Product-wise Profit Analysis</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Product Name</th>
+                                    <th>Total Sales</th>
+                                    <th>Quantity Sold</th>
+                                    <th>Revenue</th>
+                                    <th>Total Profit</th>
+                                    <th>Current Stock</th>
+                                </tr>
+                            </thead>
+                            <tbody id="product-report-list">
+                                <tr><td colspan="6" class="no-data">No data available</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Vendor Profit Report -->
+                    <div id="vendor-tab" class="tab-content">
+                        <h3>Vendor-wise Profit Analysis</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Vendor Name</th>
+                                    <th>Total Sales</th>
+                                    <th>Quantity Sold</th>
+                                    <th>Revenue</th>
+                                    <th>Total Profit</th>
+                                    <th>Products</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vendor-report-list">
+                                <tr><td colspan="6" class="no-data">No data available</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Daily Sales Report -->
+                    <div id="daily-tab" class="tab-content">
+                        <h3>Daily Sales Summary (Last 30 Days)</h3>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Transactions</th>
+                                    <th>Quantity Sold</th>
+                                    <th>Revenue</th>
+                                    <th>Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody id="daily-report-list">
+                                <tr><td colspan="5" class="no-data">No data available</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
