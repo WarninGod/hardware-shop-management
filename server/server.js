@@ -6,12 +6,20 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const db = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+
+// Hardcoded credentials (change in production)
+const USERS = {
+    'admin': { password: 'admin5050', role: 'admin' },
+    'sales': { password: 'sales123', role: 'salesperson' }
+};
 
 // Middleware
 app.use(cors());
@@ -25,6 +33,90 @@ app.get('/', (req, res) => {
 });
 
 // ============================================================================
+// AUTH MIDDLEWARE & ENDPOINTS
+// ============================================================================
+
+/**
+ * Verify JWT token and extract user role
+ */
+function verifyToken(req, res, next) {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(403).json({ error: 'Invalid or expired token' });
+        }
+        req.user = decoded;
+        next();
+    });
+}
+
+/**
+ * Require admin role
+ */
+function requireAdmin(req, res, next) {
+    verifyToken(req, res, () => {
+        if (req.user.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        next();
+    });
+}
+
+/**
+ * Require admin or salesperson
+ */
+function requireAuth(req, res, next) {
+    verifyToken(req, res, next);
+}
+
+/**
+ * POST /login - User login
+ * Body: { username, password }
+ */
+app.post('/login', (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+
+        const user = USERS[username];
+        if (!user || user.password !== password) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const token = jwt.sign(
+            { username, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '8h' }
+        );
+
+        res.json({
+            token,
+            role: user.role,
+            message: `Login successful as ${user.role}`
+        });
+    } catch (error) {
+        console.error('Error during login:', error);
+        res.status(500).json({ error: 'Login failed' });
+    }
+});
+
+/**
+ * POST /logout - User logout (frontend-side, token is deleted)
+ */
+app.post('/logout', (req, res) => {
+    res.json({ message: 'Logged out successfully' });
+});
+
+// ============================================================================
 // VENDOR ENDPOINTS
 // ============================================================================
 
@@ -32,7 +124,7 @@ app.get('/', (req, res) => {
  * POST /vendors - Create a new vendor
  * Body: { name, phone }
  */
-app.post('/vendors', async (req, res) => {
+app.post('/vendors', requireAdmin, async (req, res) => {
     try {
         const { name, phone } = req.body;
 
@@ -64,7 +156,7 @@ app.post('/vendors', async (req, res) => {
 /**
  * GET /vendors - List all vendors
  */
-app.get('/vendors', async (req, res) => {
+app.get('/vendors', requireAuth, async (req, res) => {
     try {
         const vendors = await db.query(
             'SELECT id, name, phone, created_at FROM vendors ORDER BY name ASC'
@@ -79,7 +171,7 @@ app.get('/vendors', async (req, res) => {
 /**
  * DELETE /vendors/:id - Delete a vendor
  */
-app.delete('/vendors/:id', async (req, res) => {
+app.delete('/vendors/:id', requireAdmin, async (req, res) => {
     try {
         const vendorId = parseInt(req.params.id);
 
@@ -112,7 +204,7 @@ app.delete('/vendors/:id', async (req, res) => {
  * POST /products - Create a new product
  * Body: { name, category, vendor_id, cost_price, selling_price, stock_quantity }
  */
-app.post('/products', async (req, res) => {
+app.post('/products', requireAdmin, async (req, res) => {
     try {
         const { name, category, vendor_id, cost_price, selling_price, stock_quantity } = req.body;
 
@@ -171,7 +263,7 @@ app.post('/products', async (req, res) => {
 /**
  * GET /products - List all products with vendor information
  */
-app.get('/products', async (req, res) => {
+app.get('/products', requireAuth, async (req, res) => {
     try {
         const products = await db.query(`
             SELECT 
@@ -198,7 +290,7 @@ app.get('/products', async (req, res) => {
  * PUT /products/:id - Update a product
  * Body: { name, category, vendor_id, cost_price, selling_price, stock_quantity }
  */
-app.put('/products/:id', async (req, res) => {
+app.put('/products/:id', requireAdmin, async (req, res) => {
     try {
         const productId = parseInt(req.params.id);
         const { name, category, vendor_id, cost_price, selling_price, stock_quantity } = req.body;
@@ -264,7 +356,7 @@ app.put('/products/:id', async (req, res) => {
 /**
  * DELETE /products/:id - Delete a product
  */
-app.delete('/products/:id', async (req, res) => {
+app.delete('/products/:id', requireAdmin, async (req, res) => {
     try {
         const productId = parseInt(req.params.id);
 
@@ -297,7 +389,7 @@ app.delete('/products/:id', async (req, res) => {
  * POST /sales - Create a new sale
  * Body: { product_id, quantity }
  */
-app.post('/sales', async (req, res) => {
+app.post('/sales', requireAuth, async (req, res) => {
     try {
         const { product_id, quantity } = req.body;
 
@@ -362,7 +454,7 @@ app.post('/sales', async (req, res) => {
 /**
  * GET /sales - List all sales with product information
  */
-app.get('/sales', async (req, res) => {
+app.get('/sales', requireAuth, async (req, res) => {
     try {
         const sales = await db.query(`
             SELECT 
@@ -388,7 +480,7 @@ app.get('/sales', async (req, res) => {
 /**
  * DELETE /sales/:id - Delete a sale and restore product stock
  */
-app.delete('/sales/:id', async (req, res) => {
+app.delete('/sales/:id', requireAdmin, async (req, res) => {
     try {
         const saleId = parseInt(req.params.id);
 

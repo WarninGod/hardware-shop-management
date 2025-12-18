@@ -8,6 +8,10 @@ const API_BASE = window.location.hostname === 'localhost'
     ? 'http://localhost:3000'
     : (window.API_BASE_URL || 'http://localhost:3000');
 
+// Auth state
+let authToken = null;
+let userRole = null;
+
 // State Management
 const state = {
     vendors: [],
@@ -21,8 +25,74 @@ const state = {
 // INITIALIZATION
 // ========================================================================
 
+function showLoginPage() {
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('app-container').style.display = 'none';
+}
+
+function showApp() {
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('app-container').style.display = 'block';
+}
+
+function setupLoginForm() {
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const response = await fetch(`${API_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                document.getElementById('login-error').textContent = data.error || 'Login failed';
+                document.getElementById('login-error').style.display = 'block';
+                return;
+            }
+            
+            authToken = data.token;
+            userRole = data.role;
+            localStorage.setItem('authToken', authToken);
+            localStorage.setItem('userRole', userRole);
+            
+            showApp();
+            initializeApp();
+        } catch (error) {
+            console.error('Login error:', error);
+            document.getElementById('login-error').textContent = 'Connection error';
+            document.getElementById('login-error').style.display = 'block';
+        }
+    });
+}
+
+function logout() {
+    authToken = null;
+    userRole = null;
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userRole');
+    location.reload();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    initializeApp();
+    // Check if user is logged in
+    const savedToken = localStorage.getItem('authToken');
+    const savedRole = localStorage.getItem('userRole');
+    
+    if (savedToken && savedRole) {
+        authToken = savedToken;
+        userRole = savedRole;
+        showApp();
+        initializeApp();
+    } else {
+        showLoginPage();
+        setupLoginForm();
+    }
 });
 
 async function initializeApp() {
@@ -34,6 +104,20 @@ async function initializeApp() {
     setupForms();
     setupReportTabs();
     setupSaleSearch();
+    
+    // Setup logout button
+    document.getElementById('logout-btn').addEventListener('click', logout);
+    
+    // Hide admin-only pages if not admin
+    if (userRole !== 'admin') {
+        document.querySelector('[data-page="vendors"]').style.display = 'none';
+        document.querySelector('[data-page="products"]').style.display = 'none';
+        document.querySelector('[data-page="reports"]').style.display = 'none';
+        
+        // Hide admin-only buttons
+        document.getElementById('btn-add-vendor').style.display = 'none';
+        document.getElementById('btn-add-product').style.display = 'none';
+    }
     
     // Load initial data
     await loadVendors();
@@ -186,7 +270,9 @@ function setupForms() {
 
 async function loadVendors() {
     try {
-        const response = await fetch(`${API_BASE}/vendors`);
+        const response = await fetch(`${API_BASE}/vendors`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
         if (!response.ok) throw new Error('Failed to load vendors');
         
         state.vendors = await response.json();
@@ -231,7 +317,10 @@ async function saveVendor() {
     try {
         const response = await fetch(`${API_BASE}/vendors`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
             body: JSON.stringify({ name, phone: phone || null })
         });
         
@@ -257,7 +346,8 @@ async function deleteVendor(vendorId) {
     try {
         showToast('Deleting vendor...', 'warning');
         const response = await fetch(`${API_BASE}/vendors/${vendorId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
         const data = await response.json();
@@ -287,7 +377,9 @@ async function loadVendorDropdown(elementId) {
 
 async function loadProducts() {
     try {
-        const response = await fetch(`${API_BASE}/products`);
+        const response = await fetch(`${API_BASE}/products`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
         if (!response.ok) throw new Error('Failed to load products');
         
         state.products = await response.json();
@@ -345,7 +437,10 @@ async function saveProduct() {
         
         const response = await fetch(url, {
             method,
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
             body: JSON.stringify({
                 name,
                 category,
@@ -395,7 +490,8 @@ async function deleteProduct(productId) {
     
     try {
         const response = await fetch(`${API_BASE}/products/${productId}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${authToken}` }
         });
         
         if (!response.ok) {
@@ -426,7 +522,9 @@ async function loadProductDropdown(elementId) {
 
 async function loadSales() {
     try {
-        const response = await fetch(`${API_BASE}/sales`);
+        const response = await fetch(`${API_BASE}/sales`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
         if (!response.ok) throw new Error('Failed to load sales');
         
         state.sales = await response.json();
@@ -520,7 +618,10 @@ async function recordSale() {
     try {
         const response = await fetch(`${API_BASE}/sales`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
             body: JSON.stringify({
                 product_id: parseInt(product_id),
                 quantity
@@ -589,7 +690,9 @@ function filterSaleProducts(query) {
 
 async function loadDashboard() {
     try {
-        const response = await fetch(`${API_BASE}/reports/summary`);
+        const response = await fetch(`${API_BASE}/reports/summary`, {
+            headers: { 'Authorization': `Bearer ${authToken}` }
+        });
         if (!response.ok) throw new Error('Failed to load summary');
         
         const summary = await response.json();
@@ -637,10 +740,18 @@ function switchReportTab(tabName) {
 async function loadReports() {
     try {
         const [summary, productProfit, vendorProfit, dailySales] = await Promise.all([
-            fetch(`${API_BASE}/reports/summary`).then(r => r.json()),
-            fetch(`${API_BASE}/reports/product-profit`).then(r => r.json()),
-            fetch(`${API_BASE}/reports/vendor-profit`).then(r => r.json()),
-            fetch(`${API_BASE}/reports/daily-sales`).then(r => r.json())
+            fetch(`${API_BASE}/reports/summary`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }).then(r => r.json()),
+            fetch(`${API_BASE}/reports/product-profit`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }).then(r => r.json()),
+            fetch(`${API_BASE}/reports/vendor-profit`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }).then(r => r.json()),
+            fetch(`${API_BASE}/reports/daily-sales`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            }).then(r => r.json())
         ]);
         
         // Render summary
