@@ -8,6 +8,7 @@ const cors = require('cors');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+// Real-time (Socket.IO) can be added later if needed
 
 const db = require('./db');
 
@@ -26,6 +27,12 @@ app.use(cors());
 app.use(express.json());
 // Serve static frontend from /docs (for Railway root and local dev)
 app.use(express.static(path.join(__dirname, '../docs')));
+
+// Disable caching
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store');
+  next();
+});
 
 // Root route should serve the frontend index
 app.get('/', (req, res) => {

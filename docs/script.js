@@ -753,20 +753,14 @@ async function loadReports() {
                 headers: { 'Authorization': `Bearer ${authToken}` }
             }).then(r => r.json())
         ]);
-        
-        // Render summary
+
         document.getElementById('report-total-sales').textContent = summary.total_sales;
         document.getElementById('report-total-qty').textContent = summary.total_quantity;
         document.getElementById('report-total-revenue').textContent = `₹${summary.total_sales_amount.toFixed(2)}`;
         document.getElementById('report-total-profit').textContent = `₹${summary.total_profit.toFixed(2)}`;
-        
-        // Render product profit report
+
         renderProductProfitReport(productProfit);
-        
-        // Render vendor profit report
         renderVendorProfitReport(vendorProfit);
-        
-        // Render daily sales report
         renderDailySalesReport(dailySales);
     } catch (error) {
         console.error('Error loading reports:', error);
