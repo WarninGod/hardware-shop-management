@@ -25,8 +25,8 @@ window.fetch = async (input, init = {}) => {
         // Avoid redirect loops on the login endpoint
         const isLoginEndpoint = url.includes('/login');
         if (!isLoginEndpoint) {
-            try { showToast('Session expired. Please log in again.', 'error'); } catch (_) {}
-            logout();
+            // Soft logout immediately to show login page
+            logout('expired');
         }
     }
     return response;
@@ -91,11 +91,19 @@ function setupLoginForm() {
     });
 }
 
-function logout() {
+function logout(reason) {
     authToken = null;
     userRole = null;
     localStorage.removeItem('authToken');
     localStorage.removeItem('userRole');
+    
+    if (reason === 'expired') {
+        try { window.__authExpired = true; } catch (_) {}
+        showLoginPage();
+        setupLoginForm();
+        return;
+    }
+    
     location.reload();
 }
 
@@ -289,6 +297,7 @@ function setupForms() {
 // ========================================================================
 
 async function loadVendors() {
+    if (!authToken) return;
     try {
         const response = await fetch(`${API_BASE}/vendors`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -396,6 +405,7 @@ async function loadVendorDropdown(elementId) {
 // ========================================================================
 
 async function loadProducts() {
+    if (!authToken) return;
     try {
         const response = await fetch(`${API_BASE}/products`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -541,6 +551,7 @@ async function loadProductDropdown(elementId) {
 // ========================================================================
 
 async function loadSales() {
+    if (!authToken) return;
     try {
         const response = await fetch(`${API_BASE}/sales`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -709,6 +720,7 @@ function filterSaleProducts(query) {
 // ========================================================================
 
 async function loadDashboard() {
+    if (!authToken) return;
     try {
         const response = await fetch(`${API_BASE}/reports/summary`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -758,6 +770,7 @@ function switchReportTab(tabName) {
 }
 
 async function loadReports() {
+    if (!authToken) return;
     try {
         const [summary, productProfit, vendorProfit, dailySales] = await Promise.all([
             fetch(`${API_BASE}/reports/summary`, {
@@ -869,6 +882,8 @@ function updateClock() {
 }
 
 function showToast(message, type = 'info') {
+    // Suppress toasts if auth just expired to avoid error spam
+    if (window.__authExpired) return;
     const toast = document.getElementById('toast');
     toast.textContent = message;
     toast.className = `toast show ${type}`;
