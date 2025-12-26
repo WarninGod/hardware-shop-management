@@ -12,6 +12,26 @@ const API_BASE = window.location.hostname === 'localhost'
 let authToken = null;
 let userRole = null;
 
+// ========================================================================
+// GLOBAL AUTH HANDLING: Redirect to login on 401/403
+// ========================================================================
+
+// Wrap window.fetch to catch unauthorized responses and force login
+const __nativeFetch = window.fetch.bind(window);
+window.fetch = async (input, init = {}) => {
+    const url = typeof input === 'string' ? input : (input && input.url) ? input.url : '';
+    const response = await __nativeFetch(input, init);
+    if (response && (response.status === 401 || response.status === 403)) {
+        // Avoid redirect loops on the login endpoint
+        const isLoginEndpoint = url.includes('/login');
+        if (!isLoginEndpoint) {
+            try { showToast('Session expired. Please log in again.', 'error'); } catch (_) {}
+            logout();
+        }
+    }
+    return response;
+};
+
 // State Management
 const state = {
     vendors: [],
