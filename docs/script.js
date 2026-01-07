@@ -67,14 +67,15 @@ function setupLoginForm() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
-            
-            const data = await response.json();
-            
+
             if (!response.ok) {
-                document.getElementById('login-error').textContent = data.error || 'Login failed';
+                const errorText = await response.text();
+                document.getElementById('login-error').textContent = errorText || 'Login failed';
                 document.getElementById('login-error').style.display = 'block';
                 return;
             }
+
+            const data = await response.json();
             
             authToken = data.token;
             userRole = data.role;
@@ -302,7 +303,10 @@ async function loadVendors() {
         const response = await fetch(`${API_BASE}/vendors`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        if (!response.ok) throw new Error('Failed to load vendors');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to load vendors');
+        }
         
         state.vendors = await response.json();
         renderVendors();
@@ -379,12 +383,13 @@ async function deleteVendor(vendorId) {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
 
-        const data = await response.json();
-
         if (!response.ok) {
-            showToast(data.error || 'Failed to delete vendor', 'error');
+            const errorText = await response.text();
+            showToast(errorText || 'Failed to delete vendor', 'error');
             return;
         }
+
+        const data = await response.json();
 
         showToast('Vendor deleted successfully', 'success');
         await loadVendors();
@@ -410,7 +415,10 @@ async function loadProducts() {
         const response = await fetch(`${API_BASE}/products`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        if (!response.ok) throw new Error('Failed to load products');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to load products');
+        }
         
         state.products = await response.json();
         renderProducts();
@@ -482,8 +490,8 @@ async function saveProduct() {
         });
         
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to save product');
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to save product');
         }
         
         showToast(state.currentEditingProductId ? 'Product updated successfully' : 'Product added successfully', 'success');
@@ -525,8 +533,8 @@ async function deleteProduct(productId) {
         });
         
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to delete product');
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to delete product');
         }
         
         showToast('Product deleted successfully', 'success');
@@ -556,7 +564,10 @@ async function loadSales() {
         const response = await fetch(`${API_BASE}/sales`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        if (!response.ok) throw new Error('Failed to load sales');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to load sales');
+        }
         
         state.sales = await response.json();
         renderSales();
@@ -660,10 +671,10 @@ async function recordSale() {
         });
         
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Failed to record sale');
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to record sale');
         }
-        
+
         const sale = await response.json();
         showToast(`Sale recorded! Profit: ₹${sale.profit.toFixed(2)}`, 'success');
         closeModal('sale-modal');
@@ -725,7 +736,10 @@ async function loadDashboard() {
         const response = await fetch(`${API_BASE}/reports/summary`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
-        if (!response.ok) throw new Error('Failed to load summary');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to load summary');
+        }
         
         const summary = await response.json();
         
@@ -773,18 +787,46 @@ async function loadReports() {
     if (!authToken) return;
     try {
         const [summary, productProfit, vendorProfit, dailySales] = await Promise.all([
-            fetch(`${API_BASE}/reports/summary`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            }).then(r => r.json()),
-            fetch(`${API_BASE}/reports/product-profit`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            }).then(r => r.json()),
-            fetch(`${API_BASE}/reports/vendor-profit`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            }).then(r => r.json()),
-            fetch(`${API_BASE}/reports/daily-sales`, {
-                headers: { 'Authorization': `Bearer ${authToken}` }
-            }).then(r => r.json())
+            (async () => {
+                const r = await fetch(`${API_BASE}/reports/summary`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!r.ok) {
+                    const text = await r.text();
+                    throw new Error(text || 'Failed to load summary');
+                }
+                return r.json();
+            })(),
+            (async () => {
+                const r = await fetch(`${API_BASE}/reports/product-profit`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!r.ok) {
+                    const text = await r.text();
+                    throw new Error(text || 'Failed to load product profit report');
+                }
+                return r.json();
+            })(),
+            (async () => {
+                const r = await fetch(`${API_BASE}/reports/vendor-profit`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!r.ok) {
+                    const text = await r.text();
+                    throw new Error(text || 'Failed to load vendor profit report');
+                }
+                return r.json();
+            })(),
+            (async () => {
+                const r = await fetch(`${API_BASE}/reports/daily-sales`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!r.ok) {
+                    const text = await r.text();
+                    throw new Error(text || 'Failed to load daily sales report');
+                }
+                return r.json();
+            })()
         ]);
 
         document.getElementById('report-total-sales').textContent = summary.total_sales;
