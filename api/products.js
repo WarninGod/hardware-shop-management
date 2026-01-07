@@ -157,6 +157,33 @@ module.exports = async (req, res) => {
             });
         }
 
+        // DELETE /products/:id
+        else if (req.method === 'DELETE') {
+            // Extract product ID from URL path (e.g., /api/products/123)
+            const urlParts = req.url.split('/').filter(part => part);
+            const productId = parseInt(urlParts[urlParts.length - 1]);
+
+            if (!productId || isNaN(productId)) {
+                return res.status(400).json({ error: 'Valid product ID is required' });
+            }
+
+            // Check product exists
+            const product = await pool.query('SELECT id FROM products WHERE id = $1', [productId]);
+            if (product.rows.length === 0) {
+                return res.status(404).json({ error: 'Product not found' });
+            }
+
+            // Check if product has sales
+            const sales = await pool.query('SELECT id FROM sales WHERE product_id = $1 LIMIT 1', [productId]);
+            if (sales.rows.length > 0) {
+                return res.status(400).json({ error: 'Cannot delete product with existing sales records' });
+            }
+
+            await pool.query('DELETE FROM products WHERE id = $1', [productId]);
+
+            return res.json({ message: 'Product deleted successfully' });
+        }
+
         else {
             return res.status(405).json({ error: 'Method not allowed' });
         }
