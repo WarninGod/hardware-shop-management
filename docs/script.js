@@ -6,7 +6,7 @@
 // API Base URL - automatically detects environment
 const API_BASE = window.location.hostname === 'localhost' 
     ? 'http://localhost:3000'
-    : window.location.origin; // Use the same domain (Vercel will route /api to serverless functions
+    : '/api'; // Use relative path for Vercel API routes
 
 // Auth state
 let authToken = null;
