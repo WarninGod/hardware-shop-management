@@ -91,6 +91,72 @@ module.exports = async (req, res) => {
             });
         }
 
+        // PUT /products/:id
+        else if (req.method === 'PUT') {
+            // Extract product ID from URL path (e.g., /api/products/123)
+            const urlParts = req.url.split('/').filter(part => part);
+            const productId = parseInt(urlParts[urlParts.length - 1]);
+
+            if (!productId || isNaN(productId)) {
+                return res.status(400).json({ error: 'Valid product ID is required' });
+            }
+
+            const { name, category, vendor_id, cost_price, selling_price, stock_quantity } = req.body;
+
+            // Check product exists
+            const existingProduct = await pool.query('SELECT id FROM products WHERE id = $1', [productId]);
+            if (existingProduct.rows.length === 0) {
+                return res.status(404).json({ error: 'Product not found' });
+            }
+
+            // Validation
+            if (!name || !name.trim()) {
+                return res.status(400).json({ error: 'Product name is required' });
+            }
+            if (!category || !category.trim()) {
+                return res.status(400).json({ error: 'Category is required' });
+            }
+            if (!vendor_id) {
+                return res.status(400).json({ error: 'Vendor is required' });
+            }
+
+            const costPrice = parseFloat(cost_price);
+            const sellingPrice = parseFloat(selling_price);
+            const quantity = parseInt(stock_quantity) || 0;
+
+            if (isNaN(costPrice) || costPrice < 0) {
+                return res.status(400).json({ error: 'Cost price must be a non-negative number' });
+            }
+            if (isNaN(sellingPrice) || sellingPrice <= costPrice) {
+                return res.status(400).json({ error: 'Selling price must be greater than cost price' });
+            }
+            if (quantity < 0) {
+                return res.status(400).json({ error: 'Stock quantity cannot be negative' });
+            }
+
+            // Check vendor exists
+            const vendor = await pool.query('SELECT id FROM vendors WHERE id = $1', [vendor_id]);
+            if (vendor.rows.length === 0) {
+                return res.status(400).json({ error: 'Vendor not found' });
+            }
+
+            await pool.query(
+                'UPDATE products SET name = $1, category = $2, vendor_id = $3, cost_price = $4, selling_price = $5, stock_quantity = $6 WHERE id = $7',
+                [name.trim(), category.trim(), vendor_id, costPrice, sellingPrice, quantity, productId]
+            );
+
+            return res.json({
+                id: productId,
+                name: name.trim(),
+                category: category.trim(),
+                vendor_id,
+                cost_price: costPrice,
+                selling_price: sellingPrice,
+                stock_quantity: quantity,
+                message: 'Product updated successfully'
+            });
+        }
+
         else {
             return res.status(405).json({ error: 'Method not allowed' });
         }
