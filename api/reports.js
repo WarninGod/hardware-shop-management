@@ -1,13 +1,18 @@
 /**
- * GET /api/reports/summary - Overall sales and profit summary
- * GET /api/reports/product-profit - Product-wise profit analysis
- * GET /api/reports/vendor-profit - Vendor-wise profit analysis
- * GET /api/reports/daily-sales - Daily sales summary
+ * GET /api/reports?type=summary - Overall sales and profit summary
+ * GET /api/reports?type=product-profit - Product-wise profit analysis
+ * GET /api/reports?type=vendor-profit - Vendor-wise profit analysis
+ * GET /api/reports?type=daily-sales - Daily sales summary
  */
 
-const db = require('../server/db');
+const { Pool } = require('pg');
 
-async function handler(req, res) {
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+});
+
+module.exports = async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -26,7 +31,7 @@ async function handler(req, res) {
         const reportType = req.query.type || 'summary';
 
         if (reportType === 'summary') {
-            const summary = await db.queryOne(`
+            const result = await pool.query(`
                 SELECT 
                     COUNT(*) as total_sales,
                     COALESCE(SUM(quantity), 0) as total_quantity,
@@ -34,6 +39,8 @@ async function handler(req, res) {
                     COALESCE(SUM(profit), 0) as total_profit
                 FROM sales
             `);
+
+            const summary = result.rows[0];
 
             return res.json({
                 total_sales: parseInt(summary.total_sales) || 0,
@@ -44,7 +51,7 @@ async function handler(req, res) {
         }
 
         if (reportType === 'product-profit') {
-            const products = await db.query(`
+            const result = await pool.query(`
                 SELECT 
                     p.id,
                     p.name,
@@ -59,7 +66,7 @@ async function handler(req, res) {
                 ORDER BY total_profit DESC
             `);
 
-            return res.json(products.map(p => ({
+            return res.json(result.rows.map(p => ({
                 id: p.id,
                 name: p.name,
                 total_sales: parseInt(p.total_sales),
@@ -71,7 +78,7 @@ async function handler(req, res) {
         }
 
         if (reportType === 'vendor-profit') {
-            const vendors = await db.query(`
+            const result = await pool.query(`
                 SELECT 
                     v.id,
                     v.name,
@@ -87,7 +94,7 @@ async function handler(req, res) {
                 ORDER BY total_profit DESC
             `);
 
-            return res.json(vendors.map(v => ({
+            return res.json(result.rows.map(v => ({
                 id: v.id,
                 name: v.name,
                 total_sales: parseInt(v.total_sales),
@@ -99,7 +106,7 @@ async function handler(req, res) {
         }
 
         if (reportType === 'daily-sales') {
-            const daily = await db.query(`
+            const result = await pool.query(`
                 SELECT 
                     DATE(sale_date) as sale_day,
                     COUNT(*) as total_sales,
@@ -112,7 +119,7 @@ async function handler(req, res) {
                 LIMIT 30
             `);
 
-            return res.json(daily.map(d => {
+            return res.json(result.rows.map(d => {
                 const dateObj = new Date(d.sale_day);
                 const formattedDate = dateObj.toLocaleDateString('en-US', { 
                     year: 'numeric', 
@@ -129,11 +136,9 @@ async function handler(req, res) {
             }));
         }
 
-        res.status(400).json({ error: 'Invalid report type' });
+        return res.status(400).json({ error: 'Invalid report type' });
     } catch (error) {
         console.error('Error fetching report:', error);
-        res.status(500).json({ error: 'Failed to fetch report' });
+        return res.status(500).json({ error: 'Failed to fetch report' });
     }
-}
-
-module.exports = handler;
+};

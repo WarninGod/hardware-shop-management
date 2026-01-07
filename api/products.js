@@ -1,13 +1,16 @@
 /**
  * GET /api/products - List all products
  * POST /api/products - Create a new product
- * PUT /api/products/:id - Update a product
- * DELETE /api/products/:id - Delete a product
  */
 
-const db = require('../server/db');
+const { Pool } = require('pg');
 
-async function handler(req, res) {
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+});
+
+module.exports = async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -18,21 +21,22 @@ async function handler(req, res) {
         return;
     }
 
-    // GET /products
-    if (req.method === 'GET') {
-        try {
-            const token = req.headers.authorization?.split(' ')[1];
-            if (!token) {
-                return res.status(401).json({ error: 'No token provided' });
-            }
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
 
-            const products = await db.query(`
+    try {
+        // GET /products
+        if (req.method === 'GET') {
+            const result = await pool.query(`
                 SELECT 
                     p.id,
                     p.name,
                     p.category,
                     p.vendor_id,
                     v.name as vendor_name,
+                    p.cost_price,
                     p.selling_price,
                     p.stock_quantity,
                     p.created_at
@@ -40,21 +44,11 @@ async function handler(req, res) {
                 LEFT JOIN vendors v ON p.vendor_id = v.id
                 ORDER BY p.name ASC
             `);
-            res.json(products);
-        } catch (error) {
-            console.error('Error fetching products:', error);
-            res.status(500).json({ error: 'Failed to fetch products' });
+            return res.json(result.rows);
         }
-    }
 
-    // POST /products
-    else if (req.method === 'POST') {
-        try {
-            const token = req.headers.authorization?.split(' ')[1];
-            if (!token) {
-                return res.status(401).json({ error: 'No token provided' });
-            }
-
+        // POST /products
+        else if (req.method === 'POST') {
             const { name, category, vendor_id, cost_price, selling_price, stock_quantity } = req.body;
 
             if (!name || !name.trim()) {
@@ -81,29 +75,27 @@ async function handler(req, res) {
                 return res.status(400).json({ error: 'Stock quantity cannot be negative' });
             }
 
-            const vendor = await db.queryOne('SELECT id FROM vendors WHERE id = $1', [vendor_id]);
-            if (!vendor) {
+            const vendor = await pool.query('SELECT id FROM vendors WHERE id = $1', [vendor_id]);
+            if (vendor.rows.length === 0) {
                 return res.status(400).json({ error: 'Vendor not found' });
             }
 
-            const result = await db.query(
+            const result = await pool.query(
                 'INSERT INTO products (name, category, vendor_id, cost_price, selling_price, stock_quantity) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
                 [name.trim(), category.trim(), vendor_id, costPrice, sellingPrice, quantity]
             );
 
-            res.status(201).json({
-                ...result[0],
+            return res.status(201).json({
+                ...result.rows[0],
                 message: 'Product created successfully'
             });
-        } catch (error) {
-            console.error('Error creating product:', error);
-            res.status(500).json({ error: 'Failed to create product' });
         }
-    }
 
-    else {
-        res.status(405).json({ error: 'Method not allowed' });
+        else {
+            return res.status(405).json({ error: 'Method not allowed' });
+        }
+    } catch (error) {
+        console.error('Error in products API:', error);
+        return res.status(500).json({ error: 'Failed to process request' });
     }
-}
-
-module.exports = handler;
+};
