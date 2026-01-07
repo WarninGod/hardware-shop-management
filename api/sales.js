@@ -43,7 +43,18 @@ module.exports = async (req, res) => {
                 ORDER BY s.sale_date DESC
                 LIMIT 100
             `);
-            return res.json(result.rows);
+
+            const normalized = result.rows.map(row => ({
+                id: Number(row.id),
+                product_id: Number(row.product_id),
+                product_name: row.product_name,
+                quantity: Number(row.quantity),
+                total: Number(row.total),
+                profit: Number(row.profit),
+                sale_date: row.sale_date
+            }));
+
+            return res.json(normalized);
         }
 
         // POST /sales
@@ -89,8 +100,15 @@ module.exports = async (req, res) => {
                 [qty, product_id]
             );
 
+            const sale = saleResult.rows[0];
+
             return res.status(201).json({
-                ...saleResult.rows[0],
+                id: Number(sale.id),
+                product_id: Number(sale.product_id),
+                quantity: Number(sale.quantity),
+                total: Number(sale.total),
+                profit: Number(sale.profit),
+                sale_date: sale.sale_date,
                 message: 'Sale recorded successfully'
             });
         }

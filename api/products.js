@@ -44,7 +44,20 @@ module.exports = async (req, res) => {
                 LEFT JOIN vendors v ON p.vendor_id = v.id
                 ORDER BY p.name ASC
             `);
-            return res.json(result.rows);
+
+            const normalized = result.rows.map(p => ({
+                id: Number(p.id),
+                name: p.name,
+                category: p.category,
+                vendor_id: Number(p.vendor_id),
+                vendor_name: p.vendor_name,
+                cost_price: Number(p.cost_price),
+                selling_price: Number(p.selling_price),
+                stock_quantity: Number(p.stock_quantity),
+                created_at: p.created_at
+            }));
+
+            return res.json(normalized);
         }
 
         // POST /products

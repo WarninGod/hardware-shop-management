@@ -72,13 +72,13 @@ module.exports = async (req, res) => {
             `);
 
             return res.json(result.rows.map(p => ({
-                id: p.id,
+                id: Number(p.id),
                 name: p.name,
                 total_sales: parseInt(p.total_sales),
                 total_quantity: parseInt(p.total_quantity),
                 total_revenue: parseFloat(p.total_revenue) || 0,
                 total_profit: parseFloat(p.total_profit) || 0,
-                current_stock: p.current_stock
+                current_stock: Number(p.current_stock)
             })));
         }
 
@@ -100,13 +100,13 @@ module.exports = async (req, res) => {
             `);
 
             return res.json(result.rows.map(v => ({
-                id: v.id,
+                id: Number(v.id),
                 name: v.name,
                 total_sales: parseInt(v.total_sales),
                 total_quantity: parseInt(v.total_quantity),
                 total_revenue: parseFloat(v.total_revenue) || 0,
                 total_profit: parseFloat(v.total_profit) || 0,
-                product_count: v.product_count
+                product_count: Number(v.product_count)
             })));
         }
 
