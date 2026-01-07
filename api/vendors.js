@@ -55,9 +55,15 @@ module.exports = async (req, res) => {
             });
         }
 
-        // DELETE /vendors?id=X
+        // DELETE /vendors/:id
         else if (req.method === 'DELETE') {
-            const vendorId = parseInt(req.query.id);
+            // Extract vendor ID from URL path (e.g., /api/vendors/123)
+            const urlParts = req.url.split('/').filter(part => part);
+            const vendorId = parseInt(urlParts[urlParts.length - 1]);
+
+            if (!vendorId || isNaN(vendorId)) {
+                return res.status(400).json({ error: 'Valid vendor ID is required' });
+            }
 
             const vendor = await pool.query('SELECT id FROM vendors WHERE id = $1', [vendorId]);
             if (vendor.rows.length === 0) {
