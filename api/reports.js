@@ -38,20 +38,20 @@ module.exports = async (req, res) => {
         if (reportType === 'summary') {
             const result = await pool.query(`
                 SELECT 
-                    COUNT(*) as total_sales,
-                    COALESCE(SUM(quantity), 0) as total_quantity,
-                    COALESCE(SUM(total), 0) as total_sales_amount,
-                    COALESCE(SUM(profit), 0) as total_profit
+                    CAST(COUNT(*) AS INTEGER) as total_sales,
+                    CAST(COALESCE(SUM(quantity), 0) AS INTEGER) as total_quantity,
+                    CAST(COALESCE(SUM(total), 0) AS DECIMAL(10,2)) as total_sales_amount,
+                    CAST(COALESCE(SUM(profit), 0) AS DECIMAL(10,2)) as total_profit
                 FROM sales
             `);
 
-            const summary = result.rows[0];
+            const summary = result.rows[0] || {};
 
             return res.json({
-                total_sales: parseInt(summary.total_sales) || 0,
-                total_quantity: parseInt(summary.total_quantity) || 0,
-                total_sales_amount: parseFloat(summary.total_sales_amount) || 0,
-                total_profit: parseFloat(summary.total_profit) || 0
+                total_sales: Number(summary.total_sales) || 0,
+                total_quantity: Number(summary.total_quantity) || 0,
+                total_sales_amount: Number(summary.total_sales_amount) || 0,
+                total_profit: Number(summary.total_profit) || 0
             });
         }
 
@@ -60,10 +60,10 @@ module.exports = async (req, res) => {
                 SELECT 
                     p.id,
                     p.name,
-                    COALESCE(COUNT(s.id), 0) as total_sales,
-                    COALESCE(SUM(s.quantity), 0) as total_quantity,
-                    COALESCE(SUM(s.total), 0) as total_revenue,
-                    COALESCE(SUM(s.profit), 0) as total_profit,
+                    CAST(COUNT(s.id) AS INTEGER) as total_sales,
+                    CAST(COALESCE(SUM(s.quantity), 0) AS INTEGER) as total_quantity,
+                    CAST(COALESCE(SUM(s.total), 0) AS DECIMAL(10,2)) as total_revenue,
+                    CAST(COALESCE(SUM(s.profit), 0) AS DECIMAL(10,2)) as total_profit,
                     p.stock_quantity as current_stock
                 FROM products p
                 LEFT JOIN sales s ON p.id = s.product_id
@@ -72,13 +72,13 @@ module.exports = async (req, res) => {
             `);
 
             return res.json(result.rows.map(p => ({
-                id: Number(p.id),
-                name: p.name,
-                total_sales: parseInt(p.total_sales),
-                total_quantity: parseInt(p.total_quantity),
-                total_revenue: parseFloat(p.total_revenue) || 0,
-                total_profit: parseFloat(p.total_profit) || 0,
-                current_stock: Number(p.current_stock)
+                id: Number(p.id) || 0,
+                name: p.name || '',
+                total_sales: Number(p.total_sales) || 0,
+                total_quantity: Number(p.total_quantity) || 0,
+                total_revenue: Number(p.total_revenue) || 0,
+                total_profit: Number(p.total_profit) || 0,
+                current_stock: Number(p.current_stock) || 0
             })));
         }
 
@@ -87,11 +87,11 @@ module.exports = async (req, res) => {
                 SELECT 
                     v.id,
                     v.name,
-                    COALESCE(COUNT(s.id), 0) as total_sales,
-                    COALESCE(SUM(s.quantity), 0) as total_quantity,
-                    COALESCE(SUM(s.total), 0) as total_revenue,
-                    COALESCE(SUM(s.profit), 0) as total_profit,
-                    COUNT(DISTINCT p.id) as product_count
+                    CAST(COUNT(s.id) AS INTEGER) as total_sales,
+                    CAST(COALESCE(SUM(s.quantity), 0) AS INTEGER) as total_quantity,
+                    CAST(COALESCE(SUM(s.total), 0) AS DECIMAL(10,2)) as total_revenue,
+                    CAST(COALESCE(SUM(s.profit), 0) AS DECIMAL(10,2)) as total_profit,
+                    CAST(COUNT(DISTINCT p.id) AS INTEGER) as product_count
                 FROM vendors v
                 LEFT JOIN products p ON v.id = p.vendor_id
                 LEFT JOIN sales s ON p.id = s.product_id
@@ -100,13 +100,13 @@ module.exports = async (req, res) => {
             `);
 
             return res.json(result.rows.map(v => ({
-                id: Number(v.id),
-                name: v.name,
-                total_sales: parseInt(v.total_sales),
-                total_quantity: parseInt(v.total_quantity),
-                total_revenue: parseFloat(v.total_revenue) || 0,
-                total_profit: parseFloat(v.total_profit) || 0,
-                product_count: Number(v.product_count)
+                id: Number(v.id) || 0,
+                name: v.name || '',
+                total_sales: Number(v.total_sales) || 0,
+                total_quantity: Number(v.total_quantity) || 0,
+                total_revenue: Number(v.total_revenue) || 0,
+                total_profit: Number(v.total_profit) || 0,
+                product_count: Number(v.product_count) || 0
             })));
         }
 
@@ -114,10 +114,10 @@ module.exports = async (req, res) => {
             const result = await pool.query(`
                 SELECT 
                     DATE(sale_date) as sale_day,
-                    COUNT(*) as total_sales,
-                    COALESCE(SUM(quantity), 0) as total_quantity,
-                    COALESCE(SUM(total), 0) as total_revenue,
-                    COALESCE(SUM(profit), 0) as total_profit
+                    CAST(COUNT(*) AS INTEGER) as total_sales,
+                    CAST(COALESCE(SUM(quantity), 0) AS INTEGER) as total_quantity,
+                    CAST(COALESCE(SUM(total), 0) AS DECIMAL(10,2)) as total_revenue,
+                    CAST(COALESCE(SUM(profit), 0) AS DECIMAL(10,2)) as total_profit
                 FROM sales
                 GROUP BY DATE(sale_date)
                 ORDER BY sale_day DESC
@@ -133,10 +133,10 @@ module.exports = async (req, res) => {
                 });
                 return {
                     date: formattedDate,
-                    total_sales: parseInt(d.total_sales),
-                    total_quantity: parseInt(d.total_quantity),
-                    total_revenue: parseFloat(d.total_revenue) || 0,
-                    total_profit: parseFloat(d.total_profit) || 0
+                    total_sales: Number(d.total_sales) || 0,
+                    total_quantity: Number(d.total_quantity) || 0,
+                    total_revenue: Number(d.total_revenue) || 0,
+                    total_profit: Number(d.total_profit) || 0
                 };
             }));
         }
