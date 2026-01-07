@@ -1,8 +1,8 @@
 /**
  * Production Configuration
- * Set your backend API URL here when deploying to GitHub Pages
+ * For Vercel deployment, use relative API path
  */
 
-window.API_BASE_URL = 'https://hardware-shop-management-production.up.railway.app';
+window.API_BASE_URL = '/api';
 
 console.log('Using API Base:', window.API_BASE_URL);
