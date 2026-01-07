@@ -148,11 +148,11 @@ async function initializeApp() {
         document.getElementById('btn-add-product').style.display = 'none';
     }
     
-    // Load initial data
-    await loadVendors();
-    await loadProducts();
-    await loadSales();
-    await loadDashboard();
+    // Load initial data progressively (non-blocking)
+    loadVendors();
+    loadProducts();
+    loadDashboard(); // Load summary cards first
+    loadSales(); // Load recent sales independently
     
     // Update clock
     updateClock();
@@ -560,6 +560,13 @@ async function loadProductDropdown(elementId) {
 
 async function loadSales() {
     if (!authToken) return;
+    
+    // Show loading state
+    const dashboardTbody = document.getElementById('dashboard-sales-list');
+    if (dashboardTbody) {
+        dashboardTbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;">Loading...</td></tr>';
+    }
+    
     try {
         const response = await fetch(`${API_BASE}/sales`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -732,6 +739,13 @@ function filterSaleProducts(query) {
 
 async function loadDashboard() {
     if (!authToken) return;
+    
+    // Show loading state
+    document.getElementById('stat-total-sales').textContent = '...';
+    document.getElementById('stat-revenue').textContent = '...';
+    document.getElementById('stat-profit').textContent = '...';
+    document.getElementById('stat-stock').textContent = '...';
+    
     try {
         const response = await fetch(`${API_BASE}/reports/summary`, {
             headers: { 'Authorization': `Bearer ${authToken}` }
@@ -753,6 +767,11 @@ async function loadDashboard() {
         document.getElementById('stat-stock').textContent = totalStock;
     } catch (error) {
         console.error('Error loading dashboard:', error);
+        // Show error state
+        document.getElementById('stat-total-sales').textContent = '0';
+        document.getElementById('stat-revenue').textContent = '₹0.00';
+        document.getElementById('stat-profit').textContent = '₹0.00';
+        document.getElementById('stat-stock').textContent = '0';
     }
 }
 
@@ -785,60 +804,113 @@ function switchReportTab(tabName) {
 
 async function loadReports() {
     if (!authToken) return;
-    try {
-        const [summary, productProfit, vendorProfit, dailySales] = await Promise.all([
-            (async () => {
-                const r = await fetch(`${API_BASE}/reports/summary`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                if (!r.ok) {
-                    const text = await r.text();
-                    throw new Error(text || 'Failed to load summary');
-                }
-                return r.json();
-            })(),
-            (async () => {
-                const r = await fetch(`${API_BASE}/reports/product-profit`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                if (!r.ok) {
-                    const text = await r.text();
-                    throw new Error(text || 'Failed to load product profit report');
-                }
-                return r.json();
-            })(),
-            (async () => {
-                const r = await fetch(`${API_BASE}/reports/vendor-profit`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                if (!r.ok) {
-                    const text = await r.text();
-                    throw new Error(text || 'Failed to load vendor profit report');
-                }
-                return r.json();
-            })(),
-            (async () => {
-                const r = await fetch(`${API_BASE}/reports/daily-sales`, {
-                    headers: { 'Authorization': `Bearer ${authToken}` }
-                });
-                if (!r.ok) {
-                    const text = await r.text();
-                    throw new Error(text || 'Failed to load daily sales report');
-                }
-                return r.json();
-            })()
-        ]);
+    
+    // Show loading states immediately
+    document.getElementById('report-total-sales').textContent = '...';
+    document.getElementById('report-total-qty').textContent = '...';
+    document.getElementById('report-total-revenue').textContent = '...';
+    document.getElementById('report-total-profit').textContent = '...';
+    
+    document.getElementById('product-report-list').innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;">Loading...</td></tr>';
+    document.getElementById('vendor-report-list').innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;">Loading...</td></tr>';
+    document.getElementById('daily-sales-list').innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;">Loading...</td></tr>';
+    
+    let successCount = 0;
+    const errors = [];
 
-        document.getElementById('report-total-sales').textContent = summary.total_sales;
-        document.getElementById('report-total-qty').textContent = summary.total_quantity;
-        document.getElementById('report-total-revenue').textContent = `₹${summary.total_sales_amount.toFixed(2)}`;
-        document.getElementById('report-total-profit').textContent = `₹${summary.total_profit.toFixed(2)}`;
+    // Load summary report
+    const summary = await (async () => {
+        try {
+            const r = await fetch(`${API_BASE}/reports/summary`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (!r.ok) {
+                const text = await r.text();
+                throw new Error(text || 'Failed to load summary');
+            }
+            successCount++;
+            return r.json();
+        } catch (error) {
+            errors.push('summary');
+            console.error('Summary report error:', error);
+            return { total_sales: 0, total_quantity: 0, total_sales_amount: 0, total_profit: 0 };
+        }
+    })();
+    
+    // Update summary cards immediately
+    document.getElementById('report-total-sales').textContent = summary.total_sales;
+    document.getElementById('report-total-qty').textContent = summary.total_quantity;
+    document.getElementById('report-total-revenue').textContent = `₹${summary.total_sales_amount.toFixed(2)}`;
+    document.getElementById('report-total-profit').textContent = `₹${summary.total_profit.toFixed(2)}`;
 
-        renderProductProfitReport(productProfit);
-        renderVendorProfitReport(vendorProfit);
-        renderDailySalesReport(dailySales);
-    } catch (error) {
-        console.error('Error loading reports:', error);
+    // Load product profit report
+    const productProfit = await (async () => {
+        try {
+            const r = await fetch(`${API_BASE}/reports/product-profit`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (!r.ok) {
+                const text = await r.text();
+                throw new Error(text || 'Failed to load product profit report');
+            }
+            successCount++;
+            return r.json();
+        } catch (error) {
+            errors.push('product-profit');
+            console.error('Product profit report error:', error);
+            return [];
+        }
+    })();
+    
+    // Render product report immediately
+    renderProductProfitReport(productProfit);
+
+    // Load vendor profit report
+    const vendorProfit = await (async () => {
+        try {
+            const r = await fetch(`${API_BASE}/reports/vendor-profit`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (!r.ok) {
+                const text = await r.text();
+                throw new Error(text || 'Failed to load vendor profit report');
+            }
+            successCount++;
+            return r.json();
+        } catch (error) {
+            errors.push('vendor-profit');
+            console.error('Vendor profit report error:', error);
+            return [];
+        }
+    })();
+    
+    // Render vendor report immediately
+    renderVendorProfitReport(vendorProfit);
+
+    // Load daily sales report
+    const dailySales = await (async () => {
+        try {
+            const r = await fetch(`${API_BASE}/reports/daily-sales`, {
+                headers: { 'Authorization': `Bearer ${authToken}` }
+            });
+            if (!r.ok) {
+                const text = await r.text();
+                throw new Error(text || 'Failed to load daily sales report');
+            }
+            successCount++;
+            return r.json();
+        } catch (error) {
+            errors.push('daily-sales');
+            console.error('Daily sales report error:', error);
+            return [];
+        }
+    })();
+    
+    // Render daily sales report immediately
+    renderDailySalesReport(dailySales);
+
+    // Show error ONLY if ALL reports failed
+    if (successCount === 0) {
         showToast('Failed to load reports', 'error');
     }
 }
