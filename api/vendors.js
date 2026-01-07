@@ -4,12 +4,7 @@
  * DELETE /api/vendors - Delete a vendor (requires ?id=)
  */
 
-const { Pool } = require('pg');
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-});
+const pool = require('./db-pool');
 
 module.exports = async (req, res) => {
     // Enable CORS
