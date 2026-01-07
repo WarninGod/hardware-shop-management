@@ -837,11 +837,25 @@ async function loadReports() {
         }
     })();
     
-    // Update summary cards immediately
-    document.getElementById('report-total-sales').textContent = summary.total_sales;
-    document.getElementById('report-total-qty').textContent = summary.total_quantity;
-    document.getElementById('report-total-revenue').textContent = `₹${summary.total_sales_amount.toFixed(2)}`;
-    document.getElementById('report-total-profit').textContent = `₹${summary.total_profit.toFixed(2)}`;
+    // Update summary cards immediately (with error safety)
+    try {
+        const totalSales = Number(summary?.total_sales) || 0;
+        const totalQty = Number(summary?.total_quantity) || 0;
+        const totalRevenue = Number(summary?.total_sales_amount) || 0;
+        const totalProfit = Number(summary?.total_profit) || 0;
+        
+        document.getElementById('report-total-sales').textContent = totalSales;
+        document.getElementById('report-total-qty').textContent = totalQty;
+        document.getElementById('report-total-revenue').textContent = `₹${totalRevenue.toFixed(2)}`;
+        document.getElementById('report-total-profit').textContent = `₹${totalProfit.toFixed(2)}`;
+    } catch (renderError) {
+        console.error('Error rendering summary cards:', renderError);
+        // Clear skeleton with zeros on render error
+        document.getElementById('report-total-sales').textContent = '0';
+        document.getElementById('report-total-qty').textContent = '0';
+        document.getElementById('report-total-revenue').textContent = '₹0.00';
+        document.getElementById('report-total-profit').textContent = '₹0.00';
+    }
 
     // Load product profit report
     const productProfit = await (async () => {
