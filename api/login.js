@@ -2,17 +2,21 @@
  * POST /api/login - User login
  */
 const jwt = require('jsonwebtoken');
-const { USERS, JWT_SECRET } = require('./auth');
 
-module.exports = async function handler(req, res) {
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const USERS = {
+    'admin': { password: 'admin5050', role: 'admin' },
+    'sales': { password: 'sales123', role: 'salesperson' }
+};
+
+module.exports = async (req, res) => {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
     if (req.method === 'OPTIONS') {
-        res.status(200).end();
-        return;
+        return res.status(200).end();
     }
 
     if (req.method !== 'POST') {
@@ -37,13 +41,13 @@ module.exports = async function handler(req, res) {
             { expiresIn: '8h' }
         );
 
-        res.json({
+        return res.json({
             token,
             role: user.role,
             message: `Login successful as ${user.role}`
         });
     } catch (error) {
         console.error('Error during login:', error);
-        res.status(500).json({ error: 'Login failed' });
+        return res.status(500).json({ error: 'Login failed' });
     }
-}
+};
