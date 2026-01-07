@@ -4,7 +4,7 @@
 const jwt = require('jsonwebtoken');
 const { USERS, JWT_SECRET } = require('./auth');
 
-export default function handler(req, res) {
+module.exports = async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
