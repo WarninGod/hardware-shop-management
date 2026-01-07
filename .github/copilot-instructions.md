@@ -27,6 +27,66 @@ These instructions govern all frontend UX changes for this project. Apply them t
 - Show an error banner only when all requests relevant to a given view fail (use a success counter).
 - Cache‑first: render from `state` or localStorage first when available, then refresh from network and re‑render.
 
+## Standard Loading Pattern (Mandatory)
+Use this canonical loader wrapper for every UI section. Never block UI on `Promise.all`.
+
+```js
+function createLoader({ onLoad, onSuccess, onError }) {
+  let resolved = false;
+
+  onLoad();
+
+  return async (promise) => {
+    try {
+      const data = await promise;
+      resolved = true;
+      onSuccess(data);
+    } catch (err) {
+      console.warn(err);
+      onError?.(err);
+    } finally {
+      if (!resolved) {
+        onError?.();
+      }
+    }
+  };
+}
+```
+
+Rules:
+- Never use `Promise.all` for UI‑critical rendering.
+- If `Promise.all` is used, it must be for background‑only tasks and the UI must already be visible.
+
+Cache‑first required sequence:
+```js
+const cached = getCache("summary");
+if (cached) renderSummary(cached); // render immediately
+
+fetchSummary().then(data => {
+  renderSummary(data);         // refresh UI with fresh data
+  setCache("summary", data);  // update cache
+});
+```
+
+Error banner policy:
+- Show an error banner only if `successCount === 0`, or if the user explicitly retries and all requests fail again.
+
+Required success pattern:
+```js
+let success = 0;
+
+const safe = fn => fn().then(() => { success++; }).catch(err => console.warn(err));
+
+await Promise.all([
+  safe(loadA),
+  safe(loadB),
+  safe(loadC)
+]);
+
+if (success === 0) showError();
+else hideError();
+```
+
 ## Implementation Checklist (script.js)
 - Data loading pattern
   - Do not use `await` chains for initial page load; kick off independent loaders: `loadVendors(); loadProducts(); loadDashboard(); loadSales(); loadReports();`
