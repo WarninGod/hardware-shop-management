@@ -28,34 +28,32 @@ These instructions govern all frontend UX changes for this project. Apply them t
 - Cache‑first: render from `state` or localStorage first when available, then refresh from network and re‑render.
 
 ## Standard Loading Pattern (Mandatory)
-Use this canonical loader wrapper for every UI section. Never block UI on `Promise.all`.
+Use this canonical loader wrapper for every network‑backed UI section. The loader owns the skeleton lifecycle.
 
 ```js
 function createLoader({ onLoad, onSuccess, onError }) {
-  let resolved = false;
-
-  onLoad();
-
   return async (promise) => {
     try {
+      onLoad?.();
       const data = await promise;
-      resolved = true;
-      onSuccess(data);
+      onSuccess?.(data);
+      return true;
     } catch (err) {
       console.warn(err);
       onError?.(err);
-    } finally {
-      if (!resolved) {
-        onError?.();
-      }
+      return false;
     }
   };
 }
 ```
 
 Rules:
-- Never use `Promise.all` for UI‑critical rendering.
-- If `Promise.all` is used, it must be for background‑only tasks and the UI must already be visible.
+- Use `createLoader()` for ALL network‑backed UI sections.
+- Skeleton lifecycle must be owned by the loader.
+- Skeletons MUST be cleared inside `onSuccess` or `onError`.
+- Cache‑first render BEFORE starting the network request.
+- Never block UI with `Promise.all` (if used, background‑only and UI already visible).
+- Error banners only if `successCount === 0` (or explicit retry fails again).
 
 Cache‑first required sequence:
 ```js
